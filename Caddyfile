@@ -12,14 +12,6 @@
 home.offlabs.cc {
     encode zstd gzip
 
-    # Hard cap on auth endpoints — defence in depth on top of the app-level limiter.
-    @auth path /api/auth/*
-    rate_limit @auth {
-        zone auth_zone
-        events 30
-        window 1m
-    }
-
     reverse_proxy app:3000 {
         header_up X-Forwarded-Proto https
         header_up X-Forwarded-Host {host}
