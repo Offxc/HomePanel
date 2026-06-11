@@ -360,7 +360,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
         <Card hover>
           <CardTitle>This month at a glance</CardTitle>
           <p className="text-xs text-[var(--color-app-muted)]">
-            Click any day to see what's on, add a new event, or set up a recurring series.
+            Click any day to see what&apos;s on, add a new event, or set up a recurring series.
           </p>
         </Card>
       )}

@@ -97,8 +97,8 @@ export default async function SettingsPage() {
           </span>
         </CardTitle>
         <p className="text-xs text-[var(--color-app-muted)] mb-3">
-          Tags are attached to <strong>calendar events</strong> only. They're shared across the
-          household, and the Today view groups your week by tag (so a "Work" tag becomes a "Work"
+          Tags are attached to <strong>calendar events</strong> only. They&apos;re shared across the
+          household, and the Today view groups your week by tag (so a &quot;Work&quot; tag becomes a &quot;Work&quot;
           section). Pick the colour each tag should display in.
         </p>
         <ul className="space-y-2 mb-3">
