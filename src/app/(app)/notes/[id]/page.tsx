@@ -14,7 +14,7 @@ export default async function NoteEditPage({ params }: { params: Params }) {
   const { id } = await params;
   const note = await db.note.findUnique({
     where: { id },
-    include: { author: { select: { name: true, discordId: true } } },
+    include: { author: { select: { name: true, discordId: true, colorKey: true } } },
   });
   if (!note) notFound();
   const owner = displayNameFor(note.author.discordId, note.author.name);
@@ -23,7 +23,7 @@ export default async function NoteEditPage({ params }: { params: Params }) {
     <Card>
       <div className="flex items-center justify-between mb-3">
         <Link href="/notes" className="text-xs text-[var(--color-app-muted)] hover:text-[var(--color-app-text)]">← All notes</Link>
-        <OwnerPill name={owner} ownership={note.ownership === "BOTH" ? "BOTH" : "SHARED"} />
+        <OwnerPill name={owner} colorKey={note.author.colorKey} />
       </div>
       <form action={editNote} className="space-y-2">
         <input type="hidden" name="id" value={note.id} />
