@@ -4,13 +4,16 @@ export function Card({
   className,
   children,
   hover = false,
+  id,
 }: {
   className?: string;
   children: React.ReactNode;
   hover?: boolean;
+  id?: string;
 }) {
   return (
     <section
+      id={id}
       className={clsx(
         "rounded-xl border bg-[var(--color-app-surface)] p-4",
         hover && "lift",
