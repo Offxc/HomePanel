@@ -1,14 +1,9 @@
-import { signIn } from "@/auth";
+import { startDiscord } from "./actions";
 
 type SearchParams = Promise<{ error?: string }>;
 
 export default async function SignInPage({ searchParams }: { searchParams: SearchParams }) {
   const { error } = await searchParams;
-
-  async function startDiscord() {
-    "use server";
-    await signIn("discord", { redirectTo: "/today" });
-  }
 
   return (
     <main className="min-h-screen flex items-center justify-center p-6">
