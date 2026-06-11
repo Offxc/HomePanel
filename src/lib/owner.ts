@@ -20,6 +20,7 @@ export function colorKeyForOwner(o: OwnerKey): ColorKey {
 }
 
 // Kept for compatibility with old call sites; new code uses CSS vars via colorKey.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function ownerStyle(_o: OwnerKey) {
   return { bg: "", text: "", dot: "" };
 }
