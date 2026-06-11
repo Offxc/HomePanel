@@ -1,0 +1,194 @@
+// HomePanel data model. SQLite for self-hosted simplicity.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------- Auth.js ----------------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  discordId     String?   @unique
+  createdAt     DateTime  @default(now())
+
+  // Per-user prefs (Settings page)
+  displayName   String?
+  colorKey      String    @default("teal") // teal | pink | purple | amber | blue | green | red | gray
+  kanbanEnabled Boolean   @default(false)
+
+  accounts             Account[]
+  sessions             Session[]
+  events               Event[]        @relation("EventCreator")
+  eventsAssigned       Event[]        @relation("EventAssignee")
+  shoppingItems        ShoppingItem[] @relation("ShopCreator")
+  notes                Note[]         @relation("NoteAuthor")
+  auditLogs            AuditLog[]
+  kanbanCards          KanbanCard[]   @relation("KanbanCreator")
+  kanbanCardsAssigned  KanbanCard[]   @relation("KanbanAssignee")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ---------------- Domain ----------------
+
+model Event {
+  id          String   @id @default(cuid())
+  title       String
+  location    String?
+  notes       String?
+  startsAt    DateTime
+  endsAt      DateTime?
+  allDay      Boolean  @default(false)
+  // assigneeId null = "Both"
+  assigneeId  String?
+  assignee    User?    @relation("EventAssignee", fields: [assigneeId], references: [id])
+  createdById String
+  createdBy   User     @relation("EventCreator", fields: [createdById], references: [id])
+  // Recurrence — null freq means single occurrence
+  recurFreq     String?
+  recurInterval Int        @default(1)
+  recurUntil    DateTime?
+  // Tags (shared across household, applied to events)
+  tags        EventTag[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([startsAt])
+  @@index([assigneeId])
+  @@index([recurFreq])
+}
+
+model Tag {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  colorKey  String     @default("purple")
+  order     Int        @default(0)
+  events    EventTag[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model EventTag {
+  eventId String
+  tagId   String
+  event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tag     Tag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, tagId])
+  @@index([tagId])
+}
+
+model ShoppingItem {
+  id          String    @id @default(cuid())
+  name        String
+  qty         String?
+  done        Boolean   @default(false)
+  doneAt      DateTime?
+  doneById    String?
+  ownership   String    @default("SHARED") // SHARED | BOTH
+  createdById String
+  createdBy   User      @relation("ShopCreator", fields: [createdById], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([done])
+}
+
+model Note {
+  id          String   @id @default(cuid())
+  title       String
+  body        String
+  ownership   String   @default("SHARED")
+  authorId    String
+  author      User     @relation("NoteAuthor", fields: [authorId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([updatedAt])
+}
+
+// ---------------- Kanban ----------------
+
+model KanbanColumn {
+  id        String       @id @default(cuid())
+  name      String
+  colorKey  String       @default("gray")
+  order     Int          @default(0)
+  cards     KanbanCard[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model KanbanCard {
+  id          String       @id @default(cuid())
+  columnId    String
+  column      KanbanColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  title       String
+  body        String?
+  order       Int          @default(0)
+  assigneeId  String?
+  assignee    User?        @relation("KanbanAssignee", fields: [assigneeId], references: [id])
+  createdById String
+  createdBy   User         @relation("KanbanCreator", fields: [createdById], references: [id])
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([columnId, order])
+  @@index([assigneeId])
+}
+
+// ---------------- Audit ----------------
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  at        DateTime @default(now())
+  action    String
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  detail    String?
+
+  @@index([at])
+  @@index([action])
+}
