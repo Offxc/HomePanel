@@ -1,6 +1,7 @@
 "use client";
 
 import { useOptimistic, useRef } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { OwnerPill } from "@/components/owner-pill";
 import { TagPill } from "@/components/tag-pill";
@@ -69,6 +70,7 @@ export function CalendarDayPanel({
   formDefaultStart: string;
 }) {
   const { showToast } = useToast();
+  const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
 
   const [occurrences, addOptimistic] = useOptimistic(
@@ -104,6 +106,7 @@ export function CalendarDayPanel({
 
     formRef.current?.reset();
     await addEvent(formData);
+    router.refresh();
     showToast("Event added");
   }
 
@@ -127,29 +130,31 @@ export function CalendarDayPanel({
       </div>
 
       {/* Event list */}
-      <ul className="mb-4">
+      <div className="space-y-1.5 mb-5">
         {occurrences.length === 0 && (
-          <li className="text-xs text-[var(--color-app-muted)] py-2">Nothing scheduled.</li>
+          <p className="text-xs text-[var(--color-app-muted)] py-3 text-center">Nothing scheduled</p>
         )}
         {occurrences.map((o, j) => (
-          <li
+          <div
             key={`${o.eventId}-${j}`}
-            className={`flex items-center gap-2 sm:gap-3 py-2 border-t first:border-t-0 ${
+            className={`group flex items-center gap-2 sm:gap-3 px-3 py-2.5 rounded-lg bg-[var(--color-app-bg)] ${
               o.pending ? "opacity-50 pointer-events-none" : ""
             }`}
           >
-            <div className="time-badge px-2 py-1 rounded-md text-xs font-medium tabular-nums min-w-[52px] sm:min-w-[58px] text-center flex-shrink-0">
+            <div className="time-badge px-2 py-1 rounded-md text-xs font-medium tabular-nums min-w-[52px] sm:min-w-[58px] text-center shrink-0">
               {o.timeDisplay}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm truncate">{o.title}</div>
-              <div className="text-xs text-[var(--color-app-muted)] flex flex-wrap gap-1.5 items-center mt-0.5">
-                {o.location && <span className="truncate max-w-[120px]">{o.location}</span>}
-                {o.recurFreq && <span title={`Repeats ${o.recurFreq.toLowerCase()}`}>↻</span>}
-                {o.tags.map((t) => (
-                  <TagPill key={t.id} name={t.name} colorKey={t.colorKey} size="xs" />
-                ))}
-              </div>
+              <div className="text-sm font-medium truncate">{o.title}</div>
+              {(o.location || o.recurFreq || o.tags.length > 0) && (
+                <div className="text-xs text-[var(--color-app-muted)] flex flex-wrap gap-1.5 items-center mt-0.5">
+                  {o.location && <span className="truncate max-w-[120px]">{o.location}</span>}
+                  {o.recurFreq && <span title={`Repeats ${o.recurFreq.toLowerCase()}`}>↻</span>}
+                  {o.tags.map((t) => (
+                    <TagPill key={t.id} name={t.name} colorKey={t.colorKey} size="xs" />
+                  ))}
+                </div>
+              )}
             </div>
             <OwnerPill name={o.assigneeName} colorKey={o.assigneeColorKey} />
             {!o.pending && (
@@ -157,7 +162,7 @@ export function CalendarDayPanel({
                 <Link
                   href={`/calendar?y=${year}&m=${month}&d=${selectedDay}&edit=${o.eventId}`}
                   aria-label="Edit event"
-                  className="w-7 h-7 inline-flex items-center justify-center rounded-md text-[var(--color-app-muted)] hover:bg-[var(--color-app-bg)] hover:text-[var(--color-app-text)] transition-colors text-base flex-shrink-0"
+                  className="w-7 h-7 inline-flex items-center justify-center rounded-md text-[var(--color-app-muted)] hover:bg-[var(--color-app-surface)] hover:text-[var(--color-app-text)] transition-colors text-base shrink-0 opacity-0 group-hover:opacity-100"
                 >
                   ✎
                 </Link>
@@ -166,26 +171,34 @@ export function CalendarDayPanel({
                   <button
                     type="submit"
                     aria-label="Delete event"
-                    className="w-7 h-7 inline-flex items-center justify-center rounded-md text-[var(--color-app-muted)] hover:bg-[var(--color-app-bg)] hover:text-red-600 transition-colors flex-shrink-0"
+                    className="w-7 h-7 inline-flex items-center justify-center rounded-md text-[var(--color-app-muted)] hover:bg-[var(--color-app-surface)] hover:text-red-600 transition-colors shrink-0 opacity-0 group-hover:opacity-100"
                   >
                     ×
                   </button>
                 </form>
               </>
             )}
-          </li>
+          </div>
         ))}
-      </ul>
+      </div>
+
+      {/* Section divider */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className="flex-1 border-t border-dashed border-[var(--color-app-border)]" />
+        <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--color-app-muted)] px-1">
+          {editingEvent ? "Edit event" : "Add event"}
+        </span>
+        <div className="flex-1 border-t border-dashed border-[var(--color-app-border)]" />
+      </div>
 
       {/* Add / Edit form */}
       {editingEvent ? (
-        <form action={editEvent} className="mt-2 grid grid-cols-2 gap-2 border-t pt-4">
+        <form action={editEvent} className="grid grid-cols-2 gap-2">
           <input type="hidden" name="id" value={editingEvent.id} />
           <input type="hidden" name="_y" value={String(year)} />
           <input type="hidden" name="_m" value={String(month)} />
           <input type="hidden" name="_d" value={String(selectedDay)} />
-          <div className="col-span-2 flex items-center justify-between mb-1">
-            <span className="text-xs font-medium text-[var(--color-app-muted)]">Edit event</span>
+          <div className="col-span-2 flex justify-end -mt-1 mb-1">
             <Link
               href={`/calendar?y=${year}&m=${month}&d=${selectedDay}`}
               className="text-xs text-[var(--color-app-muted)] hover:text-[var(--color-app-text)]"
@@ -253,7 +266,7 @@ export function CalendarDayPanel({
           </div>
         </form>
       ) : (
-        <form ref={formRef} action={handleAdd} className="grid grid-cols-2 gap-2 border-t pt-4">
+        <form ref={formRef} action={handleAdd} className="grid grid-cols-2 gap-2">
           <input
             name="title"
             required
