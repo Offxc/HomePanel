@@ -6,6 +6,7 @@ export type HouseholdConfig = {
   weatherLng: number;
   countryCode: string;
   timezone: string;
+  digestHour: number;
 };
 
 const DEFAULTS: HouseholdConfig = {
@@ -14,6 +15,7 @@ const DEFAULTS: HouseholdConfig = {
   weatherLng: -75.6972,
   countryCode: "CA",
   timezone: "America/Toronto",
+  digestHour: 6,
 };
 
 export async function getHouseholdConfig(): Promise<HouseholdConfig> {

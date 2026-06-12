@@ -1,0 +1,1 @@
+ALTER TABLE "HouseholdConfig" ADD COLUMN "digestHour" INTEGER NOT NULL DEFAULT 6;

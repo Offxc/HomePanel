@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getHousehold } from "@/lib/household";
 import { expandRecurrence } from "@/lib/recur";
 import { startOfDay, endOfDay, formatTime } from "@/lib/dates";
+import { getHouseholdConfig } from "@/lib/config";
 
 const COLOR_HEX: Record<string, string> = {
   teal: "#1D9E75",
@@ -97,5 +98,12 @@ export async function GET(req: NextRequest) {
       .map((s) => ({ name: s.name, qty: s.qty ?? null, isBoth: s.assigneeId === null })),
   }));
 
-  return NextResponse.json({ date: todayStr, generatedAt: now.toISOString(), members: result });
+  const config = await getHouseholdConfig();
+
+  return NextResponse.json({
+    date: todayStr,
+    generatedAt: now.toISOString(),
+    digestHour: config.digestHour,
+    members: result,
+  });
 }

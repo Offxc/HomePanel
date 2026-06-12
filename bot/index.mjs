@@ -1,6 +1,6 @@
 // HomePanel daily digest bot.
-// Posts one embed per household member to their own Discord channel at 7am,
-// then silently edits it every 15 minutes throughout the day — no re-pinging.
+// Posts one embed per household member at the configured digest hour (@ mentions them),
+// then silently edits it every 2 minutes throughout the day — no re-pinging.
 
 import cron from "node-cron";
 import { readFileSync, writeFileSync, existsSync } from "fs";
@@ -11,28 +11,28 @@ const APP_URL = process.env.APP_INTERNAL_URL ?? "http://app:3000";
 const STATE_FILE = "/data/bot-state.json";
 
 // ── State ─────────────────────────────────────────────────────────────────────
-// Shape: { messages: { "<memberId>": "<discordMessageId>" } }
-// Migrates automatically from the old date-keyed format.
+// Shape: { date: "YYYY-MM-DD", messages: { "<memberId>": "<discordMessageId>" } }
+// date tracks which calendar day the current messages belong to.
+// When the date rolls over, messages are cleared and a fresh @mention post is made.
 
 function loadState() {
   try {
     if (existsSync(STATE_FILE)) {
       const raw = JSON.parse(readFileSync(STATE_FILE, "utf8"));
-      // Already new format
+      // Current format: { date, messages }
       if (raw.messages && typeof raw.messages === "object") return raw;
-      // Old format: { "2026-06-12": { memberId: msgId, ... }, ... }
-      // Grab the most recent date's message IDs and migrate.
+      // Legacy format: { "2026-06-12": { memberId: msgId, ... }, ... }
       const dates = Object.keys(raw).filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k)).sort();
       if (dates.length > 0) {
         const latest = raw[dates[dates.length - 1]];
-        console.log("Migrating bot state from old date-keyed format →", latest);
-        return { messages: latest };
+        console.log("Migrating bot state from legacy date-keyed format →", latest);
+        return { date: dates[dates.length - 1], messages: latest };
       }
     }
   } catch (e) {
     console.error("state load failed:", e.message);
   }
-  return { messages: {} };
+  return { date: null, messages: {} };
 }
 
 function saveState(state) {
@@ -121,8 +121,7 @@ function buildEmbed(member, dateLabel, updatedAt) {
 }
 
 // ── Core send/update logic ────────────────────────────────────────────────────
-// State shape: { messages: { "<memberId>": "<discordMessageId>" } }
-// One persistent message per channel — edited forever, never re-posted.
+// One persistent message per channel per day — @mentions on first post, silent edits after.
 
 async function sendOrUpdate() {
   if (!BOT_TOKEN) { console.error("DISCORD_BOT_TOKEN not set — skipping"); return; }
@@ -136,10 +135,24 @@ async function sendOrUpdate() {
     return;
   }
 
+  const digestHour = typeof digest.digestHour === "number" ? digest.digestHour : 6;
+  const now = new Date();
+  const currentHour = now.getHours();
+
+  // Outside active window — before the configured digest hour or after 11pm
+  if (currentHour < digestHour || currentHour >= 23) return;
+
   const state = loadState();
   if (!state.messages) state.messages = {};
 
-  const now = new Date();
+  // New calendar day → clear message IDs so today's posts include a fresh @mention
+  const todayStr = digest.date;
+  if (state.date !== todayStr) {
+    console.log(`New day (${state.date} → ${todayStr}) — clearing message IDs for fresh @mention posts`);
+    state.messages = {};
+    state.date = todayStr;
+  }
+
   const updatedAt = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true });
   const dateLabel = now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
 
@@ -186,22 +199,14 @@ async function sendOrUpdate() {
 
 // ── Scheduling ────────────────────────────────────────────────────────────────
 
-// Every 2 minutes 7am–11pm — edit the persistent message with fresh content
+// Every 2 minutes — sendOrUpdate itself checks digestHour and the active window
 cron.schedule("*/2 * * * *", () => {
-  const h = new Date().getHours();
-  if (h >= 7 && h < 23) {
-    console.log(`${new Date().toLocaleTimeString()} — refreshing digest`);
-    sendOrUpdate().catch(console.error);
-  }
+  console.log(`${new Date().toLocaleTimeString()} — tick`);
+  sendOrUpdate().catch(console.error);
 });
 
-// Startup: post/update immediately if we're in the active window
-const startHour = new Date().getHours();
-if (startHour >= 7 && startHour < 23) {
-  console.log("Startup: posting/updating digest now");
-  sendOrUpdate().catch(console.error);
-} else {
-  console.log("Startup outside active hours — waiting for next 2-min tick");
-}
+// Startup: attempt immediately (sendOrUpdate will skip if outside the window)
+console.log("Startup: attempting digest post/update");
+sendOrUpdate().catch(console.error);
 
 console.log("HomePanel bot running");

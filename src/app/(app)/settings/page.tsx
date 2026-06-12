@@ -95,7 +95,7 @@ export default async function SettingsPage() {
       <Card hover>
         <CardTitle>Location</CardTitle>
         <p className="text-xs text-[var(--color-app-muted)] mb-3">
-          Controls the weather in the header and which public holidays appear on the calendar.
+          Controls the weather in the header, public holidays on the calendar, and the daily Discord digest.
           Use a 2-letter ISO country code (e.g. <code className="font-mono">CA</code>, <code className="font-mono">US</code>, <code className="font-mono">GB</code>).
           Lat/lng can be found on Google Maps — right-click any location.
           Timezone must be a valid IANA name (e.g. <code className="font-mono">America/Toronto</code>, <code className="font-mono">Europe/London</code>).
@@ -159,6 +159,21 @@ export default async function SettingsPage() {
               placeholder="CA"
               className="w-20 rounded-md border px-3 py-2 text-sm bg-transparent uppercase"
             />
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-xs text-[var(--color-app-muted)] w-28 flex-shrink-0">Digest time</label>
+            <select
+              name="digestHour"
+              defaultValue={locationConfig.digestHour}
+              className="rounded-md border px-3 py-2 text-sm bg-[var(--color-app-surface)]"
+            >
+              {Array.from({ length: 12 }, (_, i) => i + 4).map((h) => (
+                <option key={h} value={h}>
+                  {h === 0 ? "12:00 AM" : h < 12 ? `${h}:00 AM` : h === 12 ? "12:00 PM" : `${h - 12}:00 PM`}
+                </option>
+              ))}
+            </select>
+            <span className="text-xs text-[var(--color-app-muted)]">daily Discord @ mention</span>
           </div>
           <div className="flex justify-end pt-1">
             <button type="submit" className="btn-accent text-sm px-4 py-2 rounded-md font-medium">
