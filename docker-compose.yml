@@ -32,6 +32,22 @@ services:
       - app
     networks: [internal]
 
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
+    image: homepanel-bot:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      APP_INTERNAL_URL: "http://app:3000"
+    volumes:
+      - ./data:/data
+    depends_on:
+      app:
+        condition: service_healthy
+    networks: [internal]
+
 volumes:
   caddy_data:
   caddy_config:

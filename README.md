@@ -9,6 +9,7 @@ A self-hosted shared household panel — calendar (with tags, recurring events, 
 - Prisma + SQLite (single file, easy to back up)
 - Tailwind CSS v3
 - Caddy reverse proxy with automatic TLS
+- Discord bot (node-cron + Discord REST API) for daily digest embeds
 
 All mutations go through server actions; every action calls `requireSession()` and validates input with Zod.
 
@@ -25,7 +26,7 @@ All mutations go through server actions; every action calls `requireSession()` a
 | A07 Auth failures | OAuth only — no passwords. Database session strategy (revocable). Sign-out audited. Rate limit on auth endpoints in both app and Caddy. |
 | A08 Integrity failures | Lockfile committed. No CDN scripts. |
 | A09 Logging failures | `AuditLog` table records sign-in success/denied, sign-out, deletes, rate-limit hits. No tokens or PII bodies logged. |
-| A10 SSRF | Outbound fetches are Open-Meteo (weather) and Nager.Date (public holidays). Both use hard-coded base URLs; lat/lng are validated as floats and country code as exactly 2 uppercase letters before use. |
+| A10 SSRF | Outbound fetches are Open-Meteo (weather) and Nager.Date (public holidays). Both use hard-coded base URLs; lat/lng are validated as floats and country code as exactly 2 uppercase letters before use. The internal digest API (`/api/internal/daily-digest`) is protected by a shared secret and never exposed externally. |
 
 ---
 
@@ -70,6 +71,13 @@ App at http://localhost:3000.
 ## File layout
 
 ```
+bot/
+  index.mjs                     Daily digest bot (posts + edits Discord embeds)
+  package.json                  node-cron dependency
+Dockerfile.bot                  Bot container (Node 22 alpine)
+src/
+  app/api/internal/
+    daily-digest/route.ts       Internal API called by the bot (secret-protected)
 src/
   auth.ts, auth.config.ts        Auth.js + Discord + allow-list
   middleware.ts                   No-op (gating happens in pages)
@@ -110,6 +118,35 @@ src/
     shop-row.tsx                  Tap-to-check shopping row
     card.tsx                      Shared surface with optional hover lift
 ```
+
+## Discord daily digest bot
+
+A separate `bot` container runs alongside the app. Each morning at **7:00 AM** it posts one embed per person to their own Discord channel. The embed is silently **edited** (no notification) every 15 minutes throughout the day as events or shopping items are added.
+
+Each embed includes:
+- Today's calendar events (personal + Both) — all-day events listed first, then timed events. Recurring events are marked `↻`; shared (Both) events are marked `👥`.
+- Open shopping list items (personal + Both).
+
+The bot uses the **Bot token** from your existing Discord application — the same app used for OAuth sign-in. The two credentials are independent; one does not affect the other.
+
+### Required env vars (add to `.env` on the VM)
+
+| Variable | Description |
+|---|---|
+| `DISCORD_BOT_TOKEN` | Bot token from the Bot tab of your Discord app |
+| `DISCORD_CHANNEL_OFF` | Channel ID where Off's daily digest is posted |
+| `DISCORD_CHANNEL_BRI` | Channel ID where Bri's daily digest is posted |
+| `INTERNAL_API_SECRET` | Random secret shared between app and bot — generate with `openssl rand -base64 32` |
+
+### Bot setup (one-time)
+
+1. **Discord Developer Portal** → your app → **Bot** → copy your existing bot token.
+2. **OAuth2 → URL Generator** → scopes: `bot` → permissions: `Send Messages`, `Embed Links`, `Read Message History` → **Guild Install** → copy the URL → paste in browser → add to your server.
+3. In Discord (Developer Mode on): right-click each channel → **Copy Channel ID**.
+4. Add the four env vars above to `.env` on the VM.
+5. `git pull && docker compose up -d --build` — the `bot` service builds and starts automatically.
+
+---
 
 ## Hardening checklist for the VM
 

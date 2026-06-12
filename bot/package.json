@@ -1,0 +1,8 @@
+{
+  "name": "homepanel-bot",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "node-cron": "^3.0.3"
+  }
+}
