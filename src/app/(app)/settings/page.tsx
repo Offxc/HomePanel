@@ -5,16 +5,18 @@ import { COLOR_KEYS, COLOR_LABELS, coerceColorKey } from "@/lib/colors";
 import { Card, CardTitle } from "@/components/card";
 import { TagPill } from "@/components/tag-pill";
 import { OwnerPill } from "@/components/owner-pill";
-import { addTag, deleteTag, updateProfile, updateTag } from "./actions";
+import { addTag, deleteTag, updateLocation, updateProfile, updateTag } from "./actions";
+import { getHouseholdConfig } from "@/lib/config";
 
 export default async function SettingsPage() {
   const sessionUser = await requireSession();
-  const [me, tags] = await Promise.all([
+  const [me, tags, locationConfig] = await Promise.all([
     db.user.findUnique({
       where: { id: sessionUser.id },
       select: { id: true, name: true, displayName: true, discordId: true, colorKey: true, kanbanEnabled: true },
     }),
     db.tag.findMany({ orderBy: { order: "asc" } }),
+    getHouseholdConfig(),
   ]);
   if (!me) throw new Error("user not found");
 
@@ -85,6 +87,70 @@ export default async function SettingsPage() {
           <div className="flex justify-end pt-2">
             <button type="submit" className="btn-accent text-sm px-4 py-2 rounded-md font-medium">
               Save profile
+            </button>
+          </div>
+        </form>
+      </Card>
+
+      <Card hover>
+        <CardTitle>Location</CardTitle>
+        <p className="text-xs text-[var(--color-app-muted)] mb-3">
+          Controls the weather in the header and which public holidays appear on the calendar.
+          Use a 2-letter ISO country code (e.g. <code className="font-mono">CA</code>, <code className="font-mono">US</code>, <code className="font-mono">GB</code>, <code className="font-mono">AU</code>).
+          Lat/lng can be found on Google Maps — right-click any location.
+        </p>
+        <form action={updateLocation} className="space-y-3">
+          <div className="flex items-center gap-3">
+            <label className="text-xs text-[var(--color-app-muted)] w-24 flex-shrink-0">City name</label>
+            <input
+              name="weatherCity"
+              required
+              maxLength={100}
+              defaultValue={locationConfig.weatherCity}
+              placeholder="Ottawa"
+              className="flex-1 rounded-md border px-3 py-2 text-sm bg-transparent"
+            />
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-xs text-[var(--color-app-muted)] w-24 flex-shrink-0">Latitude</label>
+            <input
+              name="weatherLat"
+              required
+              type="number"
+              step="any"
+              min="-90"
+              max="90"
+              defaultValue={locationConfig.weatherLat}
+              className="flex-1 rounded-md border px-3 py-2 text-sm bg-transparent"
+            />
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-xs text-[var(--color-app-muted)] w-24 flex-shrink-0">Longitude</label>
+            <input
+              name="weatherLng"
+              required
+              type="number"
+              step="any"
+              min="-180"
+              max="180"
+              defaultValue={locationConfig.weatherLng}
+              className="flex-1 rounded-md border px-3 py-2 text-sm bg-transparent"
+            />
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-xs text-[var(--color-app-muted)] w-24 flex-shrink-0">Country code</label>
+            <input
+              name="countryCode"
+              required
+              maxLength={2}
+              defaultValue={locationConfig.countryCode}
+              placeholder="CA"
+              className="w-20 rounded-md border px-3 py-2 text-sm bg-transparent uppercase"
+            />
+          </div>
+          <div className="flex justify-end pt-1">
+            <button type="submit" className="btn-accent text-sm px-4 py-2 rounded-md font-medium">
+              Save location
             </button>
           </div>
         </form>

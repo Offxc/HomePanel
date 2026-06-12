@@ -12,6 +12,7 @@ import { RecurrenceFields } from "@/components/recurrence-fields";
 import { Card, CardTitle } from "@/components/card";
 import { addDays, formatTime, startOfDay } from "@/lib/dates";
 import { indexHolidays } from "@/lib/holidays";
+import { getHouseholdConfig } from "@/lib/config";
 import { expandRecurrence } from "@/lib/recur";
 import { seasonForMonth } from "@/lib/season";
 import { addEvent, deleteEvent } from "./actions";
@@ -71,6 +72,8 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
   const gridStart = addDays(monthStart, -firstDow);
   const cells: Date[] = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
 
+  const config = await getHouseholdConfig();
+
   const [rawEvents, members, allTags] = await Promise.all([
     db.event.findMany({
       where: {
@@ -110,7 +113,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
   }
 
   const yearsToCover = Array.from(new Set(cells.map((c) => c.getFullYear())));
-  const holidaysByDay = indexHolidays(yearsToCover);
+  const holidaysByDay = await indexHolidays(yearsToCover, config.countryCode);
 
   const selectedDate = selectedDay ? new Date(year, month, selectedDay) : null;
   const selectedKey = selectedDate ? dayKey(selectedDate) : null;

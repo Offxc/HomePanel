@@ -1,4 +1,4 @@
-// Open-Meteo current weather for Ottawa. No API key, 15-min server-side cache.
+// Open-Meteo current weather. No API key, 15-min server-side cache keyed by location.
 
 export type Weather = {
   tempC: number;
@@ -8,7 +8,7 @@ export type Weather = {
 };
 
 const TTL_MS = 15 * 60 * 1000;
-let cache: { at: number; weather: Weather | null } = { at: 0, weather: null };
+const cache = new Map<string, { at: number; weather: Weather | null }>();
 
 const CODE_MAP: Record<number, { label: string; icon: string }> = {
   0: { label: "Clear", icon: "☀" },
@@ -37,12 +37,13 @@ const CODE_MAP: Record<number, { label: string; icon: string }> = {
   99: { label: "Severe thunderstorm", icon: "⛈" },
 };
 
-export async function getOttawaWeather(): Promise<Weather | null> {
+export async function getWeather(lat: number, lng: number): Promise<Weather | null> {
+  const key = `${lat.toFixed(4)},${lng.toFixed(4)}`;
   const now = Date.now();
-  if (cache.weather && now - cache.at < TTL_MS) return cache.weather;
+  const cached = cache.get(key);
+  if (cached?.weather && now - cached.at < TTL_MS) return cached.weather;
   try {
-    const url =
-      "https://api.open-meteo.com/v1/forecast?latitude=45.4215&longitude=-75.6972&current=temperature_2m,weather_code&timezone=America%2FToronto";
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&timezone=auto`;
     const r = await fetch(url, { next: { revalidate: 900 } });
     if (!r.ok) throw new Error(`weather ${r.status}`);
     const j = (await r.json()) as { current?: { temperature_2m?: number; weather_code?: number } };
@@ -51,9 +52,15 @@ export async function getOttawaWeather(): Promise<Weather | null> {
     if (!Number.isFinite(tempC)) throw new Error("bad data");
     const meta = CODE_MAP[code] ?? { label: "Unknown", icon: "·" };
     const weather: Weather = { tempC, code, ...meta };
-    cache = { at: now, weather };
+    cache.set(key, { at: now, weather });
     return weather;
   } catch {
+    cache.set(key, { at: now, weather: null });
     return null;
   }
+}
+
+// Invalidate cached entry for a location (called after config update).
+export function invalidateWeatherCache(lat: number, lng: number) {
+  cache.delete(`${lat.toFixed(4)},${lng.toFixed(4)}`);
 }

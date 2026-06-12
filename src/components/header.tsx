@@ -1,6 +1,7 @@
 import { signOut } from "@/auth";
 import { getHousehold } from "@/lib/household";
-import { getOttawaWeather } from "@/lib/weather";
+import { getWeather } from "@/lib/weather";
+import { getHouseholdConfig } from "@/lib/config";
 import { formatLong } from "@/lib/dates";
 import { OwnerPill } from "@/components/owner-pill";
 
@@ -10,7 +11,8 @@ async function doSignOut() {
 }
 
 export async function AppHeader() {
-  const [members, weather] = await Promise.all([getHousehold(), getOttawaWeather()]);
+  const [members, config] = await Promise.all([getHousehold(), getHouseholdConfig()]);
+  const weather = await getWeather(config.weatherLat, config.weatherLng);
 
   const today = formatLong(new Date());
 
@@ -29,7 +31,7 @@ export async function AppHeader() {
               <span aria-hidden className="text-sm">{weather.icon}</span>
               <span className="tabular-nums">{weather.tempC}°</span>
               <span className="hidden sm:inline">{weather.label}</span>
-              <span className="hidden md:inline text-[var(--color-app-muted)]/70">· Ottawa</span>
+              <span className="hidden md:inline text-[var(--color-app-muted)]/70">· {config.weatherCity}</span>
             </span>
           )}
         </div>

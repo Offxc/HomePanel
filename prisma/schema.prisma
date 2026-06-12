@@ -185,6 +185,17 @@ model KanbanCard {
   @@index([assigneeId])
 }
 
+// ---------------- Household config ----------------
+
+model HouseholdConfig {
+  id          String   @id @default("default")
+  weatherCity String   @default("Ottawa")
+  weatherLat  Float    @default(45.4215)
+  weatherLng  Float    @default(-75.6972)
+  countryCode String   @default("CA")
+  updatedAt   DateTime @updatedAt
+}
+
 // ---------------- Audit ----------------
 
 model AuditLog {

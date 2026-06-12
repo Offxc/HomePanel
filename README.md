@@ -1,6 +1,6 @@
 # HomePanel
 
-A self-hosted shared household panel — calendar (with tags, recurring events, Canadian holidays), shopping list, notes, kanban — behind a Discord-OAuth allow-list.
+A self-hosted shared household panel — calendar (with tags, recurring events, public holidays), shopping list, notes, kanban — behind a Discord-OAuth allow-list.
 
 ## Stack
 
@@ -25,7 +25,7 @@ All mutations go through server actions; every action calls `requireSession()` a
 | A07 Auth failures | OAuth only — no passwords. Database session strategy (revocable). Sign-out audited. Rate limit on auth endpoints in both app and Caddy. |
 | A08 Integrity failures | Lockfile committed. No CDN scripts. |
 | A09 Logging failures | `AuditLog` table records sign-in success/denied, sign-out, deletes, rate-limit hits. No tokens or PII bodies logged. |
-| A10 SSRF | The only outbound server fetch is Open-Meteo for weather — hard-coded URL, no user input. |
+| A10 SSRF | Outbound fetches are Open-Meteo (weather) and Nager.Date (public holidays). Both use hard-coded base URLs; lat/lng are validated as floats and country code as exactly 2 uppercase letters before use. |
 
 ---
 

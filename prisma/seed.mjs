@@ -7,6 +7,13 @@ import { PrismaClient } from "@prisma/client";
 const db = new PrismaClient();
 
 async function main() {
+  await db.householdConfig.upsert({
+    where: { id: "default" },
+    create: { id: "default", weatherCity: "Ottawa", weatherLat: 45.4215, weatherLng: -75.6972, countryCode: "CA" },
+    update: {},
+  });
+  console.log("Ensured household config (Ottawa, CA defaults).");
+
   const tagCount = await db.tag.count();
   if (tagCount === 0) {
     await db.tag.createMany({

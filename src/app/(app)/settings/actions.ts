@@ -7,6 +7,7 @@ import { requireSession } from "@/lib/session";
 import { rateLimit } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
 import { COLOR_KEYS } from "@/lib/colors";
+import { invalidateWeatherCache } from "@/lib/weather";
 
 const ProfileSchema = z.object({
   displayName: z.string().trim().min(1).max(30),
@@ -26,6 +27,13 @@ const TagUpdateSchema = z.object({
 });
 
 const IdSchema = z.object({ id: z.string().min(1).max(50) });
+
+const LocationSchema = z.object({
+  weatherCity: z.string().trim().min(1).max(100),
+  weatherLat: z.coerce.number().min(-90).max(90),
+  weatherLng: z.coerce.number().min(-180).max(180),
+  countryCode: z.string().trim().length(2).transform((s) => s.toUpperCase()).refine((s) => /^[A-Z]{2}$/.test(s)),
+});
 
 function ensureRate(actorId: string) {
   const r = rateLimit(`settings:${actorId}`, { capacity: 30, refillPerSec: 1 });
@@ -53,6 +61,27 @@ export async function updateProfile(formData: FormData) {
   });
   revalidatePath("/settings");
   revalidatePath("/", "layout");
+}
+
+export async function updateLocation(formData: FormData) {
+  const user = await requireSession();
+  ensureRate(user.id);
+  const parsed = LocationSchema.parse({
+    weatherCity: formData.get("weatherCity"),
+    weatherLat: formData.get("weatherLat"),
+    weatherLng: formData.get("weatherLng"),
+    countryCode: formData.get("countryCode"),
+  });
+  // Invalidate old cached weather before saving new coords
+  const existing = await db.householdConfig.findUnique({ where: { id: "default" } });
+  if (existing) invalidateWeatherCache(existing.weatherLat, existing.weatherLng);
+  await db.householdConfig.upsert({
+    where: { id: "default" },
+    create: { id: "default", ...parsed },
+    update: parsed,
+  });
+  revalidatePath("/", "layout");
+  revalidatePath("/calendar");
 }
 
 export async function addTag(formData: FormData) {
