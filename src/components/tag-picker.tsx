@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { TagPill } from "@/components/tag-pill";
 import { COLOR_KEYS, COLOR_LABELS } from "@/lib/colors";
-import { addTag } from "@/app/(app)/settings/actions";
+import { createTag } from "@/app/(app)/settings/actions";
 
 export type TagOption = { id: string; name: string; colorKey: string };
 
@@ -33,10 +33,7 @@ export function TagPicker({
     const trimmed = newName.trim();
     if (!trimmed) return;
     setSaving(true);
-    const fd = new FormData();
-    fd.append("name", trimmed);
-    fd.append("colorKey", newColor);
-    const tag = await addTag(fd);
+    const tag = await createTag(trimmed, newColor);
     if (tag) {
       setTags((prev) => [...prev, tag]);
       setSelected((prev) => [...prev, tag.id]);

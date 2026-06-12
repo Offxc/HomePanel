@@ -93,13 +93,30 @@ export async function addTag(formData: FormData) {
     name: formData.get("name"),
     colorKey: formData.get("colorKey"),
   });
-  const max = await db.tag.findFirst({ orderBy: { order: "desc" }, select: { order: true } });
-  await db.tag.create({
-    data: { name: parsed.name, colorKey: parsed.colorKey, order: (max?.order ?? 0) + 1 },
-  });
+  await createTagRecord(user.id, parsed.name, parsed.colorKey);
   revalidatePath("/settings");
   revalidatePath("/calendar");
   revalidatePath("/today");
+}
+
+export async function createTag(name: string, colorKey: string) {
+  const user = await requireSession();
+  ensureRate(user.id);
+  const parsed = TagAddSchema.parse({ name, colorKey });
+  const tag = await createTagRecord(user.id, parsed.name, parsed.colorKey);
+  revalidatePath("/settings");
+  revalidatePath("/calendar");
+  revalidatePath("/today");
+  return tag;
+}
+
+async function createTagRecord(actorId: string, name: string, colorKey: string) {
+  void actorId;
+  const max = await db.tag.findFirst({ orderBy: { order: "desc" }, select: { order: true } });
+  return db.tag.create({
+    data: { name, colorKey, order: (max?.order ?? 0) + 1 },
+    select: { id: true, name: true, colorKey: true },
+  });
 }
 
 export async function updateTag(formData: FormData) {

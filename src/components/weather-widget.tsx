@@ -9,11 +9,9 @@ const REFRESH_MS = 3 * 60 * 1000;
 export function WeatherWidget({
   initial,
   city,
-  timezone,
 }: {
   initial: Weather | null;
   city: string;
-  timezone: string;
 }) {
   const [weather, setWeather] = useState<Weather | null>(initial);
 
