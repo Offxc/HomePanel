@@ -36,8 +36,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Expose user id + discordId on the session for server actions.
       if (session.user) {
         session.user.id = user.id;
-        const dbUser = await db.user.findUnique({ where: { id: user.id }, select: { discordId: true } });
-        (session.user as { discordId?: string | null }).discordId = dbUser?.discordId ?? null;
+        // Read discordId from the Account table — User.discordId is populated
+        // lazily and may be null on first sign-in (signIn callback runs before
+        // the adapter creates the User row, so account.userId is undefined then).
+        const account = await db.account.findFirst({
+          where: { userId: user.id, provider: "discord" },
+          select: { providerAccountId: true },
+        });
+        (session.user as { discordId?: string | null }).discordId = account?.providerAccountId ?? null;
       }
       return session;
     },
