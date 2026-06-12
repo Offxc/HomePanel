@@ -25,9 +25,10 @@ export function WeatherWidget({
         }
       } catch {}
     }
+    if (!initial) load();
     const id = setInterval(load, REFRESH_MS);
     return () => clearInterval(id);
-  }, []);
+  }, [initial]);
 
   if (!weather) return null;
 
