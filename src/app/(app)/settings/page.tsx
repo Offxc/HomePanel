@@ -152,7 +152,7 @@ export default async function SettingsPage() {
           ))}
         </ul>
 
-        <form action={addTag} className="flex flex-wrap items-center gap-2 border-t pt-3">
+        <form action={async (fd: FormData) => { await addTag(fd); }} className="flex flex-wrap items-center gap-2 border-t pt-3">
           <input
             name="name"
             required

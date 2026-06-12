@@ -1,18 +1,21 @@
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
-import { displayNameFor } from "@/lib/allowlist";
 import { getHousehold } from "@/lib/household";
 import { coerceColorKey } from "@/lib/colors";
 import { Card, CardTitle } from "@/components/card";
 import { ShopRow } from "@/components/shop-row";
+import { AssigneeRadio } from "@/components/assignee-radio";
 import { addShopItem, clearDone } from "./actions";
 
 export default async function ShoppingPage() {
-  await requireSession();
+  const user = await requireSession();
   const [items, members] = await Promise.all([
     db.shoppingItem.findMany({
       orderBy: [{ done: "asc" }, { createdAt: "desc" }],
-      include: { createdBy: { select: { name: true, displayName: true, discordId: true, colorKey: true } } },
+      include: {
+        assignee: { select: { id: true, name: true, displayName: true, discordId: true, colorKey: true } },
+        createdBy: { select: { name: true, displayName: true, discordId: true, colorKey: true } },
+      },
     }),
     getHousehold(),
   ]);
@@ -21,14 +24,6 @@ export default async function ShoppingPage() {
   const total = items.length;
   const done = items.filter((i) => i.done).length;
 
-  function ownerLabel(creatorId: string, creator: { discordId: string | null; name: string | null; displayName: string | null; colorKey: string }) {
-    const member = memberById.get(creatorId);
-    return {
-      name: member?.displayName ?? creator.displayName?.trim() ?? displayNameFor(creator.discordId, creator.name),
-      colorKey: member?.colorKey ?? coerceColorKey(creator.colorKey, "gray"),
-    };
-  }
-
   return (
     <div className="mx-auto max-w-3xl space-y-3 fade-in">
       <Card hover>
@@ -36,7 +31,9 @@ export default async function ShoppingPage() {
         <p className="text-[11px] text-[var(--color-app-muted)] mb-1.5">Tap a row to cross it off.</p>
 
         {items.map((i) => {
-          const owner = ownerLabel(i.createdById, i.createdBy);
+          const assignee = i.assigneeId ? memberById.get(i.assigneeId) : null;
+          const ownerName = assignee ? assignee.displayName : "Both";
+          const ownerColorKey = assignee ? assignee.colorKey : coerceColorKey("gray", "gray");
           return (
             <ShopRow
               key={i.id}
@@ -44,8 +41,8 @@ export default async function ShoppingPage() {
               name={i.name}
               qty={i.qty}
               done={i.done}
-              ownerName={i.ownership === "BOTH" ? "Both" : owner.name}
-              ownerColorKey={i.ownership === "BOTH" ? "gray" : owner.colorKey}
+              ownerName={ownerName}
+              ownerColorKey={ownerColorKey}
             />
           );
         })}
@@ -67,10 +64,7 @@ export default async function ShoppingPage() {
             placeholder="Qty"
             className="w-24 rounded-md border px-3 py-2 text-sm bg-transparent"
           />
-          <select name="ownership" defaultValue="SHARED" className="rounded-md border px-2 py-2 text-sm bg-transparent">
-            <option value="SHARED">Just me</option>
-            <option value="BOTH">Both</option>
-          </select>
+          <AssigneeRadio name="assigneeId" members={members} defaultValue={user.id} />
           <button type="submit" className="btn-accent text-sm px-3 py-2 rounded-md font-medium">
             Add
           </button>

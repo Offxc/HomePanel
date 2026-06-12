@@ -12,7 +12,6 @@ export type HouseholdMember = {
 // Returns the household members (Off + Bri) in a stable order: Off → Bri → other.
 export async function getHousehold(): Promise<HouseholdMember[]> {
   const rows = await db.user.findMany({
-    where: { discordId: { not: null } },
     select: { id: true, name: true, displayName: true, discordId: true, colorKey: true, kanbanEnabled: true },
   });
   const members: HouseholdMember[] = rows.map((u) => ({

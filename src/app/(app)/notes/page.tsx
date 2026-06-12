@@ -1,18 +1,21 @@
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
-import { displayNameFor } from "@/lib/allowlist";
 import { getHousehold } from "@/lib/household";
 import { coerceColorKey } from "@/lib/colors";
 import { NoteCard } from "@/components/note-card";
 import { Card } from "@/components/card";
+import { AssigneeRadio } from "@/components/assignee-radio";
 import { addNote, deleteNote, editNote } from "./actions";
 
 export default async function NotesPage() {
-  await requireSession();
+  const user = await requireSession();
   const [notes, members] = await Promise.all([
     db.note.findMany({
       orderBy: { updatedAt: "desc" },
-      include: { author: { select: { id: true, name: true, displayName: true, discordId: true, colorKey: true } } },
+      include: {
+        author: { select: { id: true, name: true, displayName: true, discordId: true, colorKey: true } },
+        assignee: { select: { id: true, name: true, displayName: true, discordId: true, colorKey: true } },
+      },
       take: 100,
     }),
     getHousehold(),
@@ -23,20 +26,28 @@ export default async function NotesPage() {
     <div className="mx-auto max-w-5xl space-y-3 fade-in">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
         {notes.map((n) => {
-          const member = memberById.get(n.authorId);
-          const name = member?.displayName ?? n.author.displayName?.trim() ?? displayNameFor(n.author.discordId, n.author.name);
-          const colorKey = member?.colorKey ?? coerceColorKey(n.author.colorKey, "gray");
+          const authorMember = memberById.get(n.authorId);
+          const authorName = authorMember?.displayName ?? n.author.displayName?.trim() ?? n.author.name ?? "Unknown";
+          const authorColorKey = coerceColorKey(authorMember?.colorKey ?? n.author.colorKey, "gray");
+
+          const assigneeMember = n.assigneeId ? memberById.get(n.assigneeId) : null;
+          const assigneeName = assigneeMember ? assigneeMember.displayName : "Both";
+          const assigneeColorKey = assigneeMember ? assigneeMember.colorKey : coerceColorKey("gray", "gray");
+
           return (
             <NoteCard
               key={n.id}
+              members={members}
               note={{
                 id: n.id,
                 title: n.title,
                 body: n.body,
-                ownership: n.ownership,
+                assigneeId: n.assigneeId,
                 updatedAt: n.updatedAt.toISOString(),
-                authorName: name,
-                authorColorKey: colorKey,
+                authorName,
+                authorColorKey,
+                assigneeName,
+                assigneeColorKey,
               }}
               onSave={editNote}
               onDelete={deleteNote}
@@ -67,11 +78,8 @@ export default async function NotesPage() {
               placeholder="Write…"
               className="w-full rounded-md border px-3 py-2 text-sm bg-transparent resize-y"
             />
-            <div className="flex items-center justify-between">
-              <select name="ownership" className="rounded-md border px-2 py-2 text-sm bg-transparent">
-                <option value="SHARED">Just me</option>
-                <option value="BOTH">Both</option>
-              </select>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <AssigneeRadio name="assigneeId" members={members} defaultValue={user.id} />
               <button type="submit" className="btn-accent text-sm px-3 py-2 rounded-md font-medium">
                 Save
               </button>

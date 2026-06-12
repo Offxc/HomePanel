@@ -11,7 +11,7 @@ export default async function SignInPage({ searchParams }: { searchParams: Searc
         <div className="mx-auto w-12 h-12 rounded-xl border flex items-center justify-center mb-4 text-xl brand-mark">▦</div>
         <h1 className="text-xl font-medium mb-1 brand-mark">HomePanel</h1>
         <p className="text-sm text-[var(--color-app-muted)] mb-6">
-          A shared household for calendar, shopping, notes and kanban.
+          Built by Offxc.
         </p>
         <SignInButton />
         {error ? (

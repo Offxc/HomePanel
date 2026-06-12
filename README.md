@@ -1,6 +1,6 @@
 # HomePanel
 
-A shared life management panel — calendar (with tags + recurring events + Canadian holidays), shopping list, notes, kanban — behind a Discord-OAuth allow-list. Self-hosted on a Linux VM at `home.offlabs.cc`.
+A self-hosted shared household panel — calendar (with tags, recurring events, Canadian holidays), shopping list, notes, kanban — behind a Discord-OAuth allow-list.
 
 ## Stack
 
@@ -25,13 +25,13 @@ All mutations go through server actions; every action calls `requireSession()` a
 | A07 Auth failures | OAuth only — no passwords. Database session strategy (revocable). Sign-out audited. Rate limit on auth endpoints in both app and Caddy. |
 | A08 Integrity failures | Lockfile committed. No CDN scripts. |
 | A09 Logging failures | `AuditLog` table records sign-in success/denied, sign-out, deletes, rate-limit hits. No tokens or PII bodies logged. |
-| A10 SSRF | The only outbound server fetch is Open-Meteo for Ottawa weather — hard-coded URL, no user input. |
+| A10 SSRF | The only outbound server fetch is Open-Meteo for weather — hard-coded URL, no user input. |
 
 ---
 
-# Deploying to the VM
+# Deploying
 
-👉 **First-time setup: follow [SETUP.md](SETUP.md).** It's a from-zero walkthrough for the `offline@dockervm` Ubuntu VM, including Discord OAuth, Namecheap DNS, and `docker compose` — every step written out.
+👉 **First-time setup: follow [SETUP.md](SETUP.md).** It's a from-zero walkthrough for an Ubuntu Docker VM, including Discord OAuth, DNS, and `docker compose` — every step written out.
 
 ## Quick reference (after first deploy)
 
@@ -54,11 +54,11 @@ git pull && docker compose up -d --build
 cp data/homepanel.db ~/homepanel-backup-$(date +%F).db
 ```
 
-## Local dev (on Windows)
+## Local dev
 
-```powershell
+```bash
 cp .env.example .env
-# fill in AUTH_SECRET, Discord creds, your Discord IDs
+# fill in AUTH_SECRET, Discord creds, Discord IDs, your domain
 npm install
 npm run db:migrate -- --name init
 npm run db:seed
@@ -81,7 +81,7 @@ src/
     rate-limit.ts                 In-memory token bucket
     colors.ts                     8-color palette
     household.ts                  Members + colorKey
-    weather.ts                    Open-Meteo Ottawa (15-min cached)
+    weather.ts                    Open-Meteo weather (15-min cached)
     holidays.ts                   Canadian statutory holidays (computed)
     season.ts                     Month → season key
     recur.ts                      Recurring-event expansion
@@ -97,18 +97,18 @@ src/
       kanban/                     Columns with click-to-rename + color + add/delete
       settings/                   Profile + calendar event tags manager
   components/
-    header.tsx                    Brand + date + Ottawa weather + user pills
+    header.tsx                    Brand + date + weather + user pills
     nav-tabs.tsx                  Top tab bar (conditional Kanban)
     owner-pill.tsx, tag-pill.tsx  Colored pills via CSS vars
     assignee-radio.tsx            Segmented control For [Off|Bri|Both]
-    tag-picker.tsx                "+ Tag" popover for event creation
+    tag-picker.tsx                "+ Tag" popover with inline tag creation
     today-view-tabs.tsx           Combined / Off / Bri filter
     note-card.tsx                 Inline-editable note card
     kanban-column.tsx             Click-to-rename, color picker, add/delete column
     kanban-card.tsx               Inline edit + ← → move + delete
-    recurrence-fields.tsx         Repeats-every dropdown
+    recurrence-fields.tsx         Repeats-every + forever checkbox
     shop-row.tsx                  Tap-to-check shopping row
-    card.tsx                      Shared surface with optional `hover` lift
+    card.tsx                      Shared surface with optional hover lift
 ```
 
 ## Hardening checklist for the VM

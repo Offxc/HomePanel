@@ -43,7 +43,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           where: { userId: user.id, provider: "discord" },
           select: { providerAccountId: true },
         });
-        (session.user as { discordId?: string | null }).discordId = account?.providerAccountId ?? null;
+        const discordId = account?.providerAccountId ?? null;
+        (session.user as { discordId?: string | null }).discordId = discordId;
+        // Backfill User.discordId so getHousehold() can find members by discordId
+        if (discordId && !(user as { discordId?: string | null }).discordId) {
+          await db.user.update({ where: { id: user.id }, data: { discordId } }).catch(() => null);
+        }
       }
       return session;
     },

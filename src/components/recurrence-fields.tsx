@@ -1,13 +1,19 @@
-// Plain server-rendered fragment of inputs for recurrence config.
-// Used inside the "add event" form.
+"use client";
+
+import { useState } from "react";
+
 export function RecurrenceFields() {
+  const [freq, setFreq] = useState("");
+  const [forever, setForever] = useState(false);
+
   return (
     <div className="col-span-2 grid grid-cols-2 gap-2">
       <div className="flex items-center gap-2 text-sm">
         <label className="text-xs text-[var(--color-app-muted)] w-12 flex-shrink-0">Repeats</label>
         <select
           name="recurFreq"
-          defaultValue=""
+          value={freq}
+          onChange={(e) => { setFreq(e.target.value); if (!e.target.value) setForever(false); }}
           className="flex-1 rounded-md border px-2 py-2 text-sm bg-transparent"
         >
           <option value="">Never</option>
@@ -18,13 +24,29 @@ export function RecurrenceFields() {
         </select>
       </div>
       <div className="flex items-center gap-2 text-sm">
-        <label className="text-xs text-[var(--color-app-muted)] w-12 flex-shrink-0">Until</label>
+        <label className={`text-xs w-12 flex-shrink-0 ${freq ? "text-[var(--color-app-muted)]" : "text-[var(--color-app-muted)]/40"}`}>
+          Until
+        </label>
         <input
           name="recurUntil"
           type="date"
-          className="flex-1 rounded-md border px-2 py-2 text-sm bg-transparent text-[var(--color-app-muted)]"
+          disabled={!freq || forever}
+          className={`flex-1 rounded-md border px-2 py-2 text-sm bg-transparent transition-opacity ${
+            !freq || forever ? "opacity-30 cursor-not-allowed" : "text-[var(--color-app-muted)]"
+          }`}
         />
       </div>
+      {freq && (
+        <label className="col-span-2 flex items-center gap-2 text-sm text-[var(--color-app-muted)] cursor-pointer">
+          <input
+            type="checkbox"
+            checked={forever}
+            onChange={(e) => setForever(e.target.checked)}
+            className="accent-[var(--color-accent)]"
+          />
+          Forever (no end date)
+        </label>
+      )}
     </div>
   );
 }

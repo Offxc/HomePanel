@@ -10,7 +10,7 @@ import { audit } from "@/lib/audit";
 const AddSchema = z.object({
   title: z.string().trim().min(1).max(120),
   body: z.string().trim().max(20_000),
-  ownership: z.enum(["SHARED", "BOTH"]).default("SHARED"),
+  assigneeId: z.string().max(50).transform((v) => v === "" ? null : v).nullable().default(null),
 });
 
 const EditSchema = AddSchema.extend({ id: z.string().min(1).max(50) });
@@ -31,10 +31,10 @@ export async function addNote(formData: FormData) {
   const parsed = AddSchema.parse({
     title: formData.get("title"),
     body: formData.get("body"),
-    ownership: formData.get("ownership") ?? "SHARED",
+    assigneeId: formData.get("assigneeId") ?? "",
   });
   await db.note.create({
-    data: { title: parsed.title, body: parsed.body, ownership: parsed.ownership, authorId: user.id },
+    data: { title: parsed.title, body: parsed.body, assigneeId: parsed.assigneeId, authorId: user.id },
   });
   revalidatePath("/notes");
 }
@@ -46,11 +46,11 @@ export async function editNote(formData: FormData) {
     id: formData.get("id"),
     title: formData.get("title"),
     body: formData.get("body"),
-    ownership: formData.get("ownership") ?? "SHARED",
+    assigneeId: formData.get("assigneeId") ?? "",
   });
   await db.note.update({
     where: { id: parsed.id },
-    data: { title: parsed.title, body: parsed.body, ownership: parsed.ownership },
+    data: { title: parsed.title, body: parsed.body, assigneeId: parsed.assigneeId },
   });
   revalidatePath("/notes");
   revalidatePath(`/notes/${parsed.id}`);

@@ -2,16 +2,20 @@
 
 import { useState, useTransition } from "react";
 import { OwnerPill } from "@/components/owner-pill";
+import { AssigneeRadio } from "@/components/assignee-radio";
 import type { ColorKey } from "@/lib/colors";
+import type { HouseholdMember } from "@/lib/household";
 
 export type NoteData = {
   id: string;
   title: string;
   body: string;
-  ownership: string;
+  assigneeId: string | null;
   updatedAt: string; // ISO
   authorName: string;
   authorColorKey: ColorKey;
+  assigneeName: string;
+  assigneeColorKey: ColorKey;
 };
 
 function timeAgo(iso: string): string {
@@ -25,16 +29,19 @@ function timeAgo(iso: string): string {
 
 export function NoteCard({
   note,
+  members,
   onSave,
   onDelete,
 }: {
   note: NoteData;
+  members: HouseholdMember[];
   onSave: (formData: FormData) => Promise<void> | void;
   onDelete: (formData: FormData) => Promise<void> | void;
 }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
+  const [assigneeId, setAssigneeId] = useState<string>(note.assigneeId ?? "");
   const [pending, start] = useTransition();
 
   const save = () => {
@@ -42,7 +49,7 @@ export function NoteCard({
     fd.append("id", note.id);
     fd.append("title", title);
     fd.append("body", body);
-    fd.append("ownership", note.ownership);
+    fd.append("assigneeId", assigneeId);
     start(async () => {
       await onSave(fd);
       setEditing(false);
@@ -81,25 +88,29 @@ export function NoteCard({
             placeholder="Write…"
             className="flex-1 text-xs text-[var(--color-app-text)] leading-relaxed bg-transparent resize-y focus:outline-none"
           />
-          <div className="flex items-center justify-between mt-2.5 pt-2 border-t">
-            <button
-              type="button"
-              onClick={() => {
-                setTitle(note.title);
-                setBody(note.body);
-                setEditing(false);
-              }}
-              className="text-xs text-[var(--color-app-muted)] hover:text-[var(--color-app-text)]"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={save}
-              className="btn-accent text-xs px-3 py-1 rounded-md font-medium"
-            >
-              Save
-            </button>
+          <div className="mt-2.5 pt-2 border-t space-y-2">
+            <AssigneeRadio
+              name="assigneeId-inline"
+              members={members}
+              defaultValue={assigneeId}
+              onChange={setAssigneeId}
+            />
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => { setTitle(note.title); setBody(note.body); setAssigneeId(note.assigneeId ?? ""); setEditing(false); }}
+                className="text-xs text-[var(--color-app-muted)] hover:text-[var(--color-app-text)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={save}
+                className="btn-accent text-xs px-3 py-1 rounded-md font-medium"
+              >
+                Save
+              </button>
+            </div>
           </div>
         </>
       ) : (
@@ -131,10 +142,7 @@ export function NoteCard({
             {note.body}
           </div>
           <div className="flex items-center justify-between mt-2.5 text-[11px] text-[var(--color-app-muted)]">
-            <OwnerPill
-              name={note.ownership === "BOTH" ? "Both" : note.authorName}
-              colorKey={note.ownership === "BOTH" ? "gray" : note.authorColorKey}
-            />
+            <OwnerPill name={note.assigneeName} colorKey={note.assigneeColorKey} />
             <span>Edited {timeAgo(note.updatedAt)}</span>
           </div>
         </>

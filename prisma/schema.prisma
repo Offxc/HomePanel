@@ -30,7 +30,9 @@ model User {
   events               Event[]        @relation("EventCreator")
   eventsAssigned       Event[]        @relation("EventAssignee")
   shoppingItems        ShoppingItem[] @relation("ShopCreator")
+  shoppingAssigned     ShoppingItem[] @relation("ShopAssignee")
   notes                Note[]         @relation("NoteAuthor")
+  notesAssigned        Note[]         @relation("NoteAssignee")
   auditLogs            AuditLog[]
   kanbanCards          KanbanCard[]   @relation("KanbanCreator")
   kanbanCardsAssigned  KanbanCard[]   @relation("KanbanAssignee")
@@ -127,7 +129,9 @@ model ShoppingItem {
   done        Boolean   @default(false)
   doneAt      DateTime?
   doneById    String?
-  ownership   String    @default("SHARED") // SHARED | BOTH
+  // assigneeId null = Both; userId = assigned to that person
+  assigneeId  String?
+  assignee    User?     @relation("ShopAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   createdById String
   createdBy   User      @relation("ShopCreator", fields: [createdById], references: [id])
   createdAt   DateTime  @default(now())
@@ -140,7 +144,9 @@ model Note {
   id          String   @id @default(cuid())
   title       String
   body        String
-  ownership   String   @default("SHARED")
+  // assigneeId null = Both; userId = assigned to that person
+  assigneeId  String?
+  assignee    User?    @relation("NoteAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   authorId    String
   author      User     @relation("NoteAuthor", fields: [authorId], references: [id])
   createdAt   DateTime @default(now())

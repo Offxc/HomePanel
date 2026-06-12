@@ -21,10 +21,10 @@ export async function AppHeader() {
           <span aria-hidden className="brand-mark text-base">▦</span>
           <span className="brand-mark">HomePanel</span>
         </div>
-        <div className="flex items-center gap-2 text-xs text-[var(--color-app-muted)] border-l pl-3 ml-1 min-w-0">
-          <span className="font-medium text-[var(--color-app-text)] truncate">{today}</span>
+        <div className="flex items-center gap-2 border-l pl-3 ml-1 min-w-0">
+          <span className="font-semibold text-[var(--color-app-text)] truncate text-sm">{today}</span>
           {weather && (
-            <span className="inline-flex items-center gap-1 flex-shrink-0">
+            <span className="inline-flex items-center gap-1 flex-shrink-0 text-xs text-[var(--color-app-muted)]">
               <span aria-hidden>·</span>
               <span aria-hidden className="text-sm">{weather.icon}</span>
               <span className="tabular-nums">{weather.tempC}°</span>

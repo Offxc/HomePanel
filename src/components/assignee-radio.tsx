@@ -6,10 +6,12 @@ export function AssigneeRadio({
   name,
   members,
   defaultValue,
+  onChange,
 }: {
   name: string;
   members: HouseholdMember[];
   defaultValue?: string | "";
+  onChange?: (value: string) => void;
 }) {
   const options: { value: string; label: string; colorKey: string }[] = [
     ...members.map((m) => ({ value: m.id, label: m.displayName, colorKey: m.colorKey })),
@@ -30,6 +32,7 @@ export function AssigneeRadio({
                 name={name}
                 value={o.value}
                 defaultChecked={checked}
+                onChange={onChange ? () => onChange(o.value) : undefined}
                 className="peer sr-only"
               />
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-[var(--color-app-muted)] transition-all peer-checked:text-[var(--color-app-text)] peer-checked:bg-[var(--color-app-surface)] peer-checked:shadow-[0_1px_3px_rgba(0,0,0,0.06)]">

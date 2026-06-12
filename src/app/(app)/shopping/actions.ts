@@ -10,7 +10,7 @@ import { audit } from "@/lib/audit";
 const AddSchema = z.object({
   name: z.string().trim().min(1).max(100),
   qty: z.string().trim().max(40).optional().or(z.literal("")),
-  ownership: z.enum(["SHARED", "BOTH"]).default("SHARED"),
+  assigneeId: z.string().max(50).transform((v) => v === "" ? null : v).nullable().default(null),
 });
 
 const IdSchema = z.object({ id: z.string().min(1).max(50) });
@@ -29,13 +29,13 @@ export async function addShopItem(formData: FormData) {
   const parsed = AddSchema.parse({
     name: formData.get("name"),
     qty: formData.get("qty") ?? "",
-    ownership: formData.get("ownership") ?? "SHARED",
+    assigneeId: formData.get("assigneeId") ?? "",
   });
   await db.shoppingItem.create({
     data: {
       name: parsed.name,
       qty: parsed.qty || null,
-      ownership: parsed.ownership,
+      assigneeId: parsed.assigneeId,
       createdById: user.id,
     },
   });
