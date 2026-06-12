@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "LifePanel",
-  description: "Shared household for Off and Bri",
+  title: "HomePanel",
+  description: "Shared household panel",
   robots: { index: false, follow: false },
 };
 
