@@ -21,9 +21,10 @@ model User {
   createdAt     DateTime  @default(now())
 
   // Per-user prefs (Settings page)
-  displayName   String?
-  colorKey      String    @default("teal") // teal | pink | purple | amber | blue | green | red | gray
-  kanbanEnabled Boolean   @default(false)
+  displayName      String?
+  colorKey         String  @default("teal") // teal | pink | purple | amber | blue | green | red | gray
+  kanbanEnabled    Boolean @default(false)
+  discordChannelId String?
 
   accounts             Account[]
   sessions             Session[]

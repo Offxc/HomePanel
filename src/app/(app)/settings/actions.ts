@@ -13,6 +13,7 @@ const ProfileSchema = z.object({
   displayName: z.string().trim().min(1).max(30),
   colorKey: z.enum(COLOR_KEYS),
   kanbanEnabled: z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean()).default(false),
+  discordChannelId: z.string().trim().max(30).nullable().optional().transform((v) => v || null),
 });
 
 const TagAddSchema = z.object({
@@ -52,6 +53,7 @@ export async function updateProfile(formData: FormData) {
     displayName: formData.get("displayName"),
     colorKey: formData.get("colorKey"),
     kanbanEnabled: formData.get("kanbanEnabled") ?? false,
+    discordChannelId: formData.get("discordChannelId"),
   });
   await db.user.update({
     where: { id: user.id },
@@ -59,6 +61,7 @@ export async function updateProfile(formData: FormData) {
       displayName: parsed.displayName,
       colorKey: parsed.colorKey,
       kanbanEnabled: parsed.kanbanEnabled,
+      discordChannelId: parsed.discordChannelId,
     },
   });
   revalidatePath("/settings");

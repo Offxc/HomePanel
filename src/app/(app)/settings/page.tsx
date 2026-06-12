@@ -13,7 +13,7 @@ export default async function SettingsPage() {
   const [me, tags, locationConfig] = await Promise.all([
     db.user.findUnique({
       where: { id: sessionUser.id },
-      select: { id: true, name: true, displayName: true, discordId: true, colorKey: true, kanbanEnabled: true },
+      select: { id: true, name: true, displayName: true, discordId: true, colorKey: true, kanbanEnabled: true, discordChannelId: true },
     }),
     db.tag.findMany({ orderBy: { order: "asc" } }),
     getHouseholdConfig(),
@@ -69,6 +69,17 @@ export default async function SettingsPage() {
                 </label>
               ))}
             </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <label className="text-xs text-[var(--color-app-muted)] w-24 flex-shrink-0">Discord channel</label>
+            <input
+              name="discordChannelId"
+              maxLength={30}
+              defaultValue={me.discordChannelId ?? ""}
+              placeholder="Channel ID for daily digest"
+              className="flex-1 rounded-md border px-3 py-2 text-sm bg-transparent font-mono"
+            />
           </div>
 
           <div className="flex items-center gap-3">

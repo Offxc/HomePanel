@@ -157,9 +157,11 @@ async function sendOrUpdate() {
   const dateLabel = now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
 
   for (const member of digest.members) {
-    const channelId = process.env[`DISCORD_CHANNEL_${member.displayName.toUpperCase()}`];
+    // Prefer channel ID stored in the DB (set via Settings); fall back to env var for existing setups
+    const envKey = `DISCORD_CHANNEL_${member.displayName.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`;
+    const channelId = member.discordChannelId || process.env[envKey];
     if (!channelId) {
-      console.log(`No channel configured for ${member.displayName} (set DISCORD_CHANNEL_${member.displayName.toUpperCase()})`);
+      console.log(`No channel configured for ${member.displayName} — set Discord channel ID in Settings`);
       continue;
     }
 

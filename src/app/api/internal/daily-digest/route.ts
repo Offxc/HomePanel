@@ -45,10 +45,11 @@ export async function GET(req: NextRequest) {
       where: { done: false },
       orderBy: { createdAt: "asc" },
     }),
-    db.user.findMany({ select: { id: true, discordId: true } }),
+    db.user.findMany({ select: { id: true, discordId: true, discordChannelId: true } }),
   ]);
 
   const discordIdByUser = new Map(userRows.map((u) => [u.id, u.discordId ?? null]));
+  const channelIdByUser = new Map(userRows.map((u) => [u.id, u.discordChannelId ?? null]));
 
   // Expand recurring events and collect all today instances
   type Instance = {
@@ -90,6 +91,7 @@ export async function GET(req: NextRequest) {
     displayName: m.displayName,
     colorHex: COLOR_HEX[m.colorKey] ?? "#6B7280",
     discordId: discordIdByUser.get(m.id) ?? null,
+    discordChannelId: channelIdByUser.get(m.id) ?? null,
     events: allInstances
       .filter((i) => i.assigneeId === m.id || i.assigneeId === null)
       .map(({ assigneeId: _id, ...rest }) => rest),
