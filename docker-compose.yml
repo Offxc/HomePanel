@@ -6,6 +6,7 @@ services:
     env_file: .env
     environment:
       NODE_ENV: production
+      DATABASE_URL: "file:/app/data/homepanel.db"
     volumes:
       - homepanel_data:/app/data
     expose:
