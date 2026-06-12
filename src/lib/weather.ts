@@ -7,7 +7,7 @@ export type Weather = {
   icon: string;
 };
 
-const TTL_MS = 15 * 60 * 1000;
+const TTL_MS = 3 * 60 * 1000;
 const cache = new Map<string, { at: number; weather: Weather | null }>();
 
 const CODE_MAP: Record<number, { label: string; icon: string }> = {

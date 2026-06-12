@@ -182,16 +182,11 @@ export function CalendarDayPanel({
         ))}
       </div>
 
-      {/* Section divider */}
-      <div className="flex items-center gap-3 mb-4">
-        <div className="flex-1 border-t border-dashed border-[var(--color-app-border)]" />
-        <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--color-app-muted)] px-1">
-          {editingEvent ? "Edit event" : "Add event"}
-        </span>
-        <div className="flex-1 border-t border-dashed border-[var(--color-app-border)]" />
-      </div>
-
-      {/* Add / Edit form */}
+      {/* Add / Edit form — visually distinct card */}
+      <div className="rounded-lg border bg-[var(--color-app-bg)] p-3 sm:p-4">
+        <div className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-app-muted)] mb-3">
+          {editingEvent ? "✎ Edit event" : "+ Add event"}
+        </div>
       {editingEvent ? (
         <form action={editEvent} className="grid grid-cols-2 gap-2">
           <input type="hidden" name="id" value={editingEvent.id} />
@@ -307,6 +302,7 @@ export function CalendarDayPanel({
           </div>
         </form>
       )}
+      </div>
     </div>
   );
 }

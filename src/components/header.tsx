@@ -4,6 +4,7 @@ import { getWeather } from "@/lib/weather";
 import { getHouseholdConfig } from "@/lib/config";
 import { formatLong } from "@/lib/dates";
 import { OwnerPill } from "@/components/owner-pill";
+import { WeatherWidget } from "@/components/weather-widget";
 
 async function doSignOut() {
   "use server";
@@ -25,15 +26,7 @@ export async function AppHeader() {
         </div>
         <div className="flex items-center gap-2 border-l pl-3 ml-1 min-w-0">
           <span className="font-semibold text-[var(--color-app-text)] truncate text-sm">{today}</span>
-          {weather && (
-            <span className="inline-flex items-center gap-1 flex-shrink-0 text-xs text-[var(--color-app-muted)]">
-              <span aria-hidden>·</span>
-              <span aria-hidden className="text-sm">{weather.icon}</span>
-              <span className="tabular-nums">{weather.tempC}°</span>
-              <span className="hidden sm:inline">{weather.label}</span>
-              <span className="hidden md:inline text-[var(--color-app-muted)]/70">· {config.weatherCity}</span>
-            </span>
-          )}
+          <WeatherWidget initial={weather} city={config.weatherCity} />
         </div>
       </div>
       <div className="flex items-center gap-1.5">
