@@ -9,17 +9,24 @@ const REFRESH_MS = 3 * 60 * 1000;
 export function WeatherWidget({
   initial,
   city,
+  timezone,
 }: {
   initial: Weather | null;
   city: string;
+  timezone: string;
 }) {
   const [weather, setWeather] = useState<Weather | null>(initial);
+  const [tz, setTz] = useState(timezone);
 
   useEffect(() => {
     async function load() {
       try {
         const r = await fetch("/api/weather");
-        if (r.ok) setWeather(await r.json());
+        if (r.ok) {
+          const data = await r.json();
+          if (data.weather) setWeather(data.weather);
+          if (data.timezone) setTz(data.timezone);
+        }
       } catch {}
     }
     const id = setInterval(load, REFRESH_MS);

@@ -193,6 +193,7 @@ model HouseholdConfig {
   weatherLat  Float    @default(45.4215)
   weatherLng  Float    @default(-75.6972)
   countryCode String   @default("CA")
+  timezone    String   @default("America/Toronto")
   updatedAt   DateTime @updatedAt
 }
 

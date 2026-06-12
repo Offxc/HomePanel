@@ -33,6 +33,7 @@ const LocationSchema = z.object({
   weatherLat: z.coerce.number().min(-90).max(90),
   weatherLng: z.coerce.number().min(-180).max(180),
   countryCode: z.string().trim().length(2).transform((s) => s.toUpperCase()).refine((s) => /^[A-Z]{2}$/.test(s)),
+  timezone: z.string().trim().min(1).max(60),
 });
 
 function ensureRate(actorId: string) {
@@ -71,6 +72,7 @@ export async function updateLocation(formData: FormData) {
     weatherLat: formData.get("weatherLat"),
     weatherLng: formData.get("weatherLng"),
     countryCode: formData.get("countryCode"),
+    timezone: formData.get("timezone"),
   });
   // Invalidate old cached weather before saving new coords
   const existing = await db.householdConfig.findUnique({ where: { id: "default" } });

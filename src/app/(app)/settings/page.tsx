@@ -96,12 +96,13 @@ export default async function SettingsPage() {
         <CardTitle>Location</CardTitle>
         <p className="text-xs text-[var(--color-app-muted)] mb-3">
           Controls the weather in the header and which public holidays appear on the calendar.
-          Use a 2-letter ISO country code (e.g. <code className="font-mono">CA</code>, <code className="font-mono">US</code>, <code className="font-mono">GB</code>, <code className="font-mono">AU</code>).
+          Use a 2-letter ISO country code (e.g. <code className="font-mono">CA</code>, <code className="font-mono">US</code>, <code className="font-mono">GB</code>).
           Lat/lng can be found on Google Maps — right-click any location.
+          Timezone must be a valid IANA name (e.g. <code className="font-mono">America/Toronto</code>, <code className="font-mono">Europe/London</code>).
         </p>
         <form action={updateLocation} className="space-y-3">
           <div className="flex items-center gap-3">
-            <label className="text-xs text-[var(--color-app-muted)] w-24 flex-shrink-0">City name</label>
+            <label className="text-xs text-[var(--color-app-muted)] w-28 flex-shrink-0">City name</label>
             <input
               name="weatherCity"
               required
@@ -112,7 +113,18 @@ export default async function SettingsPage() {
             />
           </div>
           <div className="flex items-center gap-3">
-            <label className="text-xs text-[var(--color-app-muted)] w-24 flex-shrink-0">Latitude</label>
+            <label className="text-xs text-[var(--color-app-muted)] w-28 flex-shrink-0">Timezone</label>
+            <input
+              name="timezone"
+              required
+              maxLength={60}
+              defaultValue={locationConfig.timezone}
+              placeholder="America/Toronto"
+              className="flex-1 rounded-md border px-3 py-2 text-sm bg-transparent font-mono"
+            />
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-xs text-[var(--color-app-muted)] w-28 flex-shrink-0">Latitude</label>
             <input
               name="weatherLat"
               required
@@ -125,7 +137,7 @@ export default async function SettingsPage() {
             />
           </div>
           <div className="flex items-center gap-3">
-            <label className="text-xs text-[var(--color-app-muted)] w-24 flex-shrink-0">Longitude</label>
+            <label className="text-xs text-[var(--color-app-muted)] w-28 flex-shrink-0">Longitude</label>
             <input
               name="weatherLng"
               required
@@ -138,7 +150,7 @@ export default async function SettingsPage() {
             />
           </div>
           <div className="flex items-center gap-3">
-            <label className="text-xs text-[var(--color-app-muted)] w-24 flex-shrink-0">Country code</label>
+            <label className="text-xs text-[var(--color-app-muted)] w-28 flex-shrink-0">Country code</label>
             <input
               name="countryCode"
               required
@@ -218,7 +230,7 @@ export default async function SettingsPage() {
           ))}
         </ul>
 
-        <form action={async (fd: FormData) => { await addTag(fd); }} className="flex flex-wrap items-center gap-2 border-t pt-3">
+        <form action={addTag} className="flex flex-wrap items-center gap-2 border-t pt-3">
           <input
             name="name"
             required

@@ -7,5 +7,5 @@ export async function GET() {
   await requireSession();
   const config = await getHouseholdConfig();
   const weather = await getWeather(config.weatherLat, config.weatherLng);
-  return NextResponse.json(weather);
+  return NextResponse.json({ weather, timezone: config.timezone });
 }

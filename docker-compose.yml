@@ -7,6 +7,7 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: "file:/app/data/homepanel.db"
+      TZ: "America/Toronto"
     volumes:
       - homepanel_data:/app/data
     expose:

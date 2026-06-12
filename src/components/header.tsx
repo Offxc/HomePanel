@@ -26,7 +26,7 @@ export async function AppHeader() {
         </div>
         <div className="flex items-center gap-2 border-l pl-3 ml-1 min-w-0">
           <span className="font-semibold text-[var(--color-app-text)] truncate text-sm">{today}</span>
-          <WeatherWidget initial={weather} city={config.weatherCity} />
+          <WeatherWidget initial={weather} city={config.weatherCity} timezone={config.timezone} />
         </div>
       </div>
       <div className="flex items-center gap-1.5">

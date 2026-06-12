@@ -182,11 +182,15 @@ export function CalendarDayPanel({
         ))}
       </div>
 
-      {/* Add / Edit form — visually distinct card */}
-      <div className="rounded-lg border bg-[var(--color-app-bg)] p-3 sm:p-4">
-        <div className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-app-muted)] mb-3">
+      {/* Visible separator between events and form */}
+      <div className="flex items-center gap-3 mt-2 mb-5">
+        <div className="h-px flex-1 bg-[var(--color-app-muted)]/20" />
+        <span className="text-[11px] font-bold uppercase tracking-widest text-[var(--color-app-muted)] px-2 py-1 rounded-md border border-[var(--color-app-muted)]/20">
           {editingEvent ? "✎ Edit event" : "+ Add event"}
-        </div>
+        </span>
+        <div className="h-px flex-1 bg-[var(--color-app-muted)]/20" />
+      </div>
+
       {editingEvent ? (
         <form action={editEvent} className="grid grid-cols-2 gap-2">
           <input type="hidden" name="id" value={editingEvent.id} />
@@ -302,7 +306,6 @@ export function CalendarDayPanel({
           </div>
         </form>
       )}
-      </div>
     </div>
   );
 }
