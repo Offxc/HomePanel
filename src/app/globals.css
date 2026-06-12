@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+@keyframes toast-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+.toast-pill {
+  animation: toast-in 0.15s ease-out forwards;
+}
+
 :root {
   /* Color palette — owner pills + tags */
   --c-teal-bg:   #E1F5EE;  --c-teal-text:   #085041;  --c-teal-dot:   #1D9E75;

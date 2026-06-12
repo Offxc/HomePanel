@@ -5,6 +5,7 @@ import { NoteCard, type NoteData } from "@/components/note-card";
 import { Card } from "@/components/card";
 import { AssigneeRadio } from "@/components/assignee-radio";
 import { addNote, editNote, deleteNote } from "@/app/(app)/notes/actions";
+import { useToast } from "@/components/toast";
 import type { HouseholdMember } from "@/lib/household";
 import type { ColorKey } from "@/lib/colors";
 
@@ -28,6 +29,7 @@ export function NotesList({
     (state: OptNote[], n: OptNote) => [n, ...state],
   );
 
+  const { showToast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const detailsRef = useRef<HTMLDetailsElement>(null);
 
@@ -53,6 +55,7 @@ export function NotesList({
     formRef.current?.reset();
     if (detailsRef.current) detailsRef.current.open = false;
     await addNote(formData);
+    showToast("Note added");
   }
 
   return (

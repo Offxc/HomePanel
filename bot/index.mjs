@@ -105,8 +105,10 @@ function buildEmbed(member, dateLabel, updatedAt) {
 }
 
 // ── Core send/update logic ────────────────────────────────────────────────────
+// State shape: { messages: { "<memberId>": "<discordMessageId>" } }
+// One persistent message per channel — edited forever, never re-posted.
 
-async function sendOrUpdate(forceNew = false) {
+async function sendOrUpdate() {
   if (!BOT_TOKEN) { console.error("DISCORD_BOT_TOKEN not set — skipping"); return; }
   if (!API_SECRET) { console.error("INTERNAL_API_SECRET not set — skipping"); return; }
 
@@ -118,17 +120,14 @@ async function sendOrUpdate(forceNew = false) {
     return;
   }
 
-  const today = digest.date;
   const state = loadState();
-  if (forceNew) state[today] = {};
-  if (!state[today]) state[today] = {};
+  if (!state.messages) state.messages = {};
 
   const now = new Date();
   const updatedAt = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true });
   const dateLabel = now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
 
   for (const member of digest.members) {
-    // Expects env var like DISCORD_CHANNEL_OFF or DISCORD_CHANNEL_BRI
     const channelId = process.env[`DISCORD_CHANNEL_${member.displayName.toUpperCase()}`];
     if (!channelId) {
       console.log(`No channel configured for ${member.displayName} (set DISCORD_CHANNEL_${member.displayName.toUpperCase()})`);
@@ -136,20 +135,20 @@ async function sendOrUpdate(forceNew = false) {
     }
 
     const embed = buildEmbed(member, dateLabel, updatedAt);
-    const existingId = state[today][member.id];
+    const existingId = state.messages[member.id];
 
     if (existingId) {
       try {
         await discord("PATCH", `/channels/${channelId}/messages/${existingId}`, { embeds: [embed] });
         console.log(`[${member.displayName}] updated message ${existingId}`);
       } catch (e) {
-        // Message may have been deleted — send a fresh one
+        // Message was deleted — send a fresh one and remember the new ID
         console.error(`[${member.displayName}] edit failed (${e.message}), sending new`);
         try {
           const mention = member.discordId ? `<@${member.discordId}>` : undefined;
           const msg = await discord("POST", `/channels/${channelId}/messages`, { content: mention, embeds: [embed] });
-          state[today][member.id] = msg.id;
-          console.log(`[${member.displayName}] sent new message ${msg.id}`);
+          state.messages[member.id] = msg.id;
+          console.log(`[${member.displayName}] sent replacement message ${msg.id}`);
         } catch (e2) {
           console.error(`[${member.displayName}] send also failed: ${e2.message}`);
         }
@@ -158,18 +157,12 @@ async function sendOrUpdate(forceNew = false) {
       try {
         const mention = member.discordId ? `<@${member.discordId}>` : undefined;
         const msg = await discord("POST", `/channels/${channelId}/messages`, { content: mention, embeds: [embed] });
-        state[today][member.id] = msg.id;
-        console.log(`[${member.displayName}] sent message ${msg.id}`);
+        state.messages[member.id] = msg.id;
+        console.log(`[${member.displayName}] sent initial message ${msg.id}`);
       } catch (e) {
         console.error(`[${member.displayName}] send failed: ${e.message}`);
       }
     }
-  }
-
-  // Prune entries older than 14 days to keep state file small
-  const cutoff = new Date(now.getTime() - 14 * 86_400_000).toISOString().slice(0, 10);
-  for (const key of Object.keys(state)) {
-    if (key < cutoff) delete state[key];
   }
 
   saveState(state);
@@ -177,18 +170,12 @@ async function sendOrUpdate(forceNew = false) {
 
 // ── Scheduling ────────────────────────────────────────────────────────────────
 
-// 7:00 AM every day — send a fresh message (forceNew = true starts a new thread for the day)
-cron.schedule("0 7 * * *", () => {
-  console.log("07:00 — sending fresh daily digest");
-  sendOrUpdate(true).catch(console.error);
-});
-
-// Every 2 minutes between 7am and 11pm — silently edit the existing message
+// Every 2 minutes 7am–11pm — edit the persistent message with fresh content
 cron.schedule("*/2 * * * *", () => {
   const h = new Date().getHours();
   if (h >= 7 && h < 23) {
     console.log(`${new Date().toLocaleTimeString()} — refreshing digest`);
-    sendOrUpdate(false).catch(console.error);
+    sendOrUpdate().catch(console.error);
   }
 });
 
@@ -196,9 +183,9 @@ cron.schedule("*/2 * * * *", () => {
 const startHour = new Date().getHours();
 if (startHour >= 7 && startHour < 23) {
   console.log("Startup: posting/updating digest now");
-  sendOrUpdate(false).catch(console.error);
+  sendOrUpdate().catch(console.error);
 } else {
-  console.log("Startup outside active hours — waiting for 07:00 cron");
+  console.log("Startup outside active hours — waiting for next 2-min tick");
 }
 
 console.log("HomePanel bot running");

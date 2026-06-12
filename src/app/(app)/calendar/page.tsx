@@ -5,17 +5,13 @@ import { displayNameFor } from "@/lib/allowlist";
 import { getHousehold } from "@/lib/household";
 import { coerceColorKey } from "@/lib/colors";
 import { OwnerPill } from "@/components/owner-pill";
-import { TagPill } from "@/components/tag-pill";
-import { AssigneeRadio } from "@/components/assignee-radio";
-import { TagPicker } from "@/components/tag-picker";
-import { RecurrenceFields } from "@/components/recurrence-fields";
 import { Card, CardTitle } from "@/components/card";
 import { addDays, formatTime, startOfDay } from "@/lib/dates";
 import { indexHolidays } from "@/lib/holidays";
 import { getHouseholdConfig } from "@/lib/config";
 import { expandRecurrence } from "@/lib/recur";
 import { seasonForMonth } from "@/lib/season";
-import { addEvent, deleteEvent, editEvent } from "./actions";
+import { CalendarDayPanel, type DayOccurrence, type EditingEvent } from "@/components/calendar-day-panel";
 
 type SearchParams = Promise<{ y?: string; m?: string; d?: string; edit?: string }>;
 
@@ -134,6 +130,45 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
 
   const season = seasonForMonth(month);
 
+  // Serialize server data for the client CalendarDayPanel
+  const serializedOccurrences: DayOccurrence[] = selectedKey
+    ? (occByDay.get(selectedKey) ?? []).map((o) => ({
+        eventId: o.event.id,
+        title: o.event.title,
+        location: o.event.location,
+        allDay: o.event.allDay,
+        recurFreq: o.event.recurFreq,
+        tags: o.event.tags.map((et) => et.tag),
+        at: o.at.toISOString(),
+        timeDisplay: o.event.allDay ? "All day" : formatTime(o.at).slice(0, 5),
+        assigneeId: o.event.assigneeId,
+        assigneeName: assigneeName(o.event),
+        assigneeColorKey: assigneeColor(o.event),
+      }))
+    : [];
+
+  const serializedEditingEvent: EditingEvent | null = editingEvent
+    ? {
+        id: editingEvent.id,
+        title: editingEvent.title,
+        location: editingEvent.location,
+        startsAt: isoLocalDateTime(editingEvent.startsAt),
+        endsAt: editingEvent.endsAt ? isoLocalDateTime(editingEvent.endsAt) : null,
+        allDay: editingEvent.allDay,
+        recurFreq: editingEvent.recurFreq,
+        recurUntil: editingEvent.recurUntil ? isoLocalDate(editingEvent.recurUntil) : null,
+        assigneeId: editingEvent.assigneeId,
+        tagIds: editingEvent.tags.map((et) => et.tag.id),
+      }
+    : null;
+
+  const selectedDateLabel = selectedDate
+    ? selectedDate.toLocaleDateString([], { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+    : "";
+  const selectedHolidayNames = selectedKey
+    ? (holidaysByDay.get(selectedKey) ?? []).map((h) => h.name)
+    : [];
+
   return (
     <div className="space-y-4 fade-in">
       <Card className={`p-0 overflow-hidden season-tint season-${season}`}>
@@ -192,12 +227,12 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
                 d.getMonth() === month
                   ? `/calendar?y=${year}&m=${month + 1}&d=${d.getDate()}`
                   : `/calendar?y=${d.getFullYear()}&m=${d.getMonth() + 1}&d=${d.getDate()}`;
-              const maxInline = 3;
+              const maxInline = 2;
               return (
                 <Link
                   key={i}
                   href={hrefFinal}
-                  className={`group block border-l border-t first:border-l-0 min-h-[110px] p-1.5 text-left transition-all ${
+                  className={`group block border-l border-t first:border-l-0 min-h-[64px] sm:min-h-[110px] p-1 sm:p-1.5 text-left transition-all ${
                     inMonth ? "hover:bg-[var(--color-app-bg)]" : "text-[var(--color-app-muted)]/60 hover:bg-[var(--color-app-bg)]/40"
                   } ${isSelected ? "ring-2 ring-inset" : ""}`}
                   style={isSelected ? { boxShadow: "inset 0 0 0 2px var(--color-accent)" } : undefined}
@@ -237,7 +272,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
                           title={`${o.event.title}${o.event.location ? " · " + o.event.location : ""} · ${name}`}
                         >
                           {!o.event.allDay && (
-                            <span className="tabular-nums opacity-80 shrink-0">{formatTime(o.at).slice(0, 5)}</span>
+                            <span className="tabular-nums opacity-80 shrink-0 hidden sm:inline">{formatTime(o.at).slice(0, 5)}</span>
                           )}
                           <span className="truncate font-medium">{o.event.title}</span>
                         </li>
@@ -256,200 +291,21 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
         </div>
       </Card>
 
-      {selectedDate ? (
-        <Card hover>
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <div className="text-base font-medium">
-                {selectedDate.toLocaleDateString([], { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-              </div>
-              {(holidaysByDay.get(selectedKey!) ?? []).length > 0 && (
-                <div className="text-xs text-[var(--color-app-muted)] mt-0.5">
-                  {(holidaysByDay.get(selectedKey!) ?? []).map((h) => h.name).join(" · ")}
-                </div>
-              )}
-            </div>
-            <Link
-              href={`/calendar?y=${year}&m=${month + 1}`}
-              className="text-xs text-[var(--color-app-muted)] hover:text-[var(--color-app-text)]"
-            >
-              Close
-            </Link>
-          </div>
-
-          <ul>
-            {(occByDay.get(selectedKey!) ?? []).length === 0 && (
-              <li className="text-xs text-[var(--color-app-muted)] py-2">Nothing scheduled.</li>
-            )}
-            {(occByDay.get(selectedKey!) ?? []).map((o, j) => (
-              <li
-                key={`${o.event.id}-${o.at.getTime()}-${j}`}
-                className="flex items-center gap-3 py-2 border-t first:border-t-0"
-              >
-                <div className="time-badge px-2 py-1 rounded-md text-xs font-medium tabular-nums min-w-[58px] text-center">
-                  {o.event.allDay ? "All day" : formatTime(o.at).slice(0, 5)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm">{o.event.title}</div>
-                  <div className="text-xs text-[var(--color-app-muted)] flex flex-wrap gap-2 items-center mt-0.5">
-                    {o.event.location && <span>{o.event.location}</span>}
-                    {o.event.recurFreq && (
-                      <span title={`Repeats ${o.event.recurFreq.toLowerCase()}`}>↻ repeats</span>
-                    )}
-                    {o.event.tags.map((et) => (
-                      <TagPill key={et.tag.id} name={et.tag.name} colorKey={et.tag.colorKey} size="xs" />
-                    ))}
-                  </div>
-                </div>
-                <OwnerPill name={assigneeName(o.event)} colorKey={assigneeColor(o.event)} />
-                <Link
-                  href={`/calendar?y=${year}&m=${month + 1}&d=${selectedDay}&edit=${o.event.id}`}
-                  aria-label="Edit event"
-                  title="Edit event"
-                  className="w-7 h-7 inline-flex items-center justify-center rounded-md text-[var(--color-app-muted)] hover:bg-[var(--color-app-bg)] hover:text-[var(--color-app-text)] transition-colors text-base"
-                >
-                  ✎
-                </Link>
-                <form action={deleteEvent}>
-                  <input type="hidden" name="id" value={o.event.id} />
-                  <button
-                    type="submit"
-                    aria-label="Delete event"
-                    title={o.event.recurFreq ? "Delete whole series" : "Delete event"}
-                    className="w-7 h-7 inline-flex items-center justify-center rounded-md text-[var(--color-app-muted)] hover:bg-[var(--color-app-bg)] hover:text-red-600 transition-colors"
-                  >
-                    ×
-                  </button>
-                </form>
-              </li>
-            ))}
-          </ul>
-
-          {editingEvent ? (
-            <form action={editEvent} className="mt-4 grid grid-cols-2 gap-2">
-              <input type="hidden" name="id" value={editingEvent.id} />
-              <input type="hidden" name="_y" value={String(year)} />
-              <input type="hidden" name="_m" value={String(month + 1)} />
-              <input type="hidden" name="_d" value={String(selectedDay)} />
-              <div className="col-span-2 flex items-center justify-between mb-1">
-                <span className="text-xs font-medium text-[var(--color-app-muted)]">Edit event</span>
-                <Link
-                  href={`/calendar?y=${year}&m=${month + 1}&d=${selectedDay}`}
-                  className="text-xs text-[var(--color-app-muted)] hover:text-[var(--color-app-text)]"
-                >
-                  Cancel
-                </Link>
-              </div>
-              <input
-                name="title"
-                required
-                maxLength={200}
-                placeholder="Title"
-                defaultValue={editingEvent.title}
-                className="col-span-2 rounded-md border px-3 py-2 text-sm bg-transparent"
-              />
-              <input
-                name="location"
-                maxLength={120}
-                placeholder="Location (optional)"
-                defaultValue={editingEvent.location ?? ""}
-                className="col-span-2 rounded-md border px-3 py-2 text-sm bg-transparent"
-              />
-              <input
-                name="startsAt"
-                type="datetime-local"
-                required
-                defaultValue={isoLocalDateTime(editingEvent.startsAt)}
-                className="rounded-md border px-2 py-2 text-sm bg-transparent"
-              />
-              <input
-                name="endsAt"
-                type="datetime-local"
-                defaultValue={editingEvent.endsAt ? isoLocalDateTime(editingEvent.endsAt) : ""}
-                className="rounded-md border px-2 py-2 text-sm bg-transparent"
-              />
-              <label className="flex items-center gap-2 text-sm text-[var(--color-app-muted)] col-span-2">
-                <input
-                  type="checkbox"
-                  name="allDay"
-                  defaultChecked={editingEvent.allDay}
-                  className="accent-[var(--color-accent)]"
-                /> All day
-              </label>
-
-              <RecurrenceFields
-                defaultFreq={editingEvent.recurFreq ?? ""}
-                defaultUntil={editingEvent.recurUntil ? isoLocalDate(editingEvent.recurUntil) : ""}
-              />
-
-              <div className="col-span-2 flex items-center flex-wrap gap-3 pt-1 border-t pt-3">
-                <AssigneeRadio name="assigneeId" members={members} defaultValue={editingEvent.assigneeId ?? ""} />
-                <TagPicker
-                  name="tagIds"
-                  available={allTags.map((t) => ({ id: t.id, name: t.name, colorKey: t.colorKey }))}
-                  defaultSelectedIds={editingEvent.tags.map((et) => et.tag.id)}
-                />
-              </div>
-              <div className="col-span-2 flex justify-end">
-                <button
-                  type="submit"
-                  className="btn-accent text-sm px-4 py-2 rounded-md font-medium"
-                >
-                  Save changes
-                </button>
-              </div>
-            </form>
-          ) : (
-            <form action={addEvent} className="mt-4 grid grid-cols-2 gap-2">
-              <input
-                name="title"
-                required
-                maxLength={200}
-                placeholder="Title"
-                className="col-span-2 rounded-md border px-3 py-2 text-sm bg-transparent"
-              />
-              <input
-                name="location"
-                maxLength={120}
-                placeholder="Location (optional)"
-                className="col-span-2 rounded-md border px-3 py-2 text-sm bg-transparent"
-              />
-              <input
-                name="startsAt"
-                type="datetime-local"
-                required
-                defaultValue={isoLocalDateTime(formDefaultStart)}
-                className="rounded-md border px-2 py-2 text-sm bg-transparent"
-              />
-              <input
-                name="endsAt"
-                type="datetime-local"
-                className="rounded-md border px-2 py-2 text-sm bg-transparent"
-              />
-              <label className="flex items-center gap-2 text-sm text-[var(--color-app-muted)] col-span-2">
-                <input type="checkbox" name="allDay" className="accent-[var(--color-accent)]" /> All day
-              </label>
-
-              <RecurrenceFields />
-
-              <div className="col-span-2 flex items-center flex-wrap gap-3 pt-1 border-t pt-3">
-                <AssigneeRadio name="assigneeId" members={members} defaultValue={user.id} />
-                <TagPicker
-                  name="tagIds"
-                  available={allTags.map((t) => ({ id: t.id, name: t.name, colorKey: t.colorKey }))}
-                />
-              </div>
-              <div className="col-span-2 flex justify-end">
-                <button
-                  type="submit"
-                  className="btn-accent text-sm px-4 py-2 rounded-md font-medium"
-                >
-                  Add event
-                </button>
-              </div>
-            </form>
-          )}
-        </Card>
+      {selectedDate && selectedDay ? (
+        <CalendarDayPanel
+          selectedDateLabel={selectedDateLabel}
+          holidayNames={selectedHolidayNames}
+          initialOccurrences={serializedOccurrences}
+          members={members}
+          allTags={allTags.map((t) => ({ id: t.id, name: t.name, colorKey: t.colorKey }))}
+          editingEvent={serializedEditingEvent}
+          editId={editId}
+          year={year}
+          month={month + 1}
+          selectedDay={selectedDay}
+          userId={user.id}
+          formDefaultStart={isoLocalDateTime(formDefaultStart)}
+        />
       ) : (
         <Card hover>
           <CardTitle>This month at a glance</CardTitle>

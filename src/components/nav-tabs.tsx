@@ -15,14 +15,14 @@ export function NavTabs({ tabs }: { tabs: Tab[] }) {
           <Link
             key={t.href}
             href={t.href}
-            className={`relative flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-[13px] font-medium transition-all ${
+            className={`relative flex-1 flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 px-1 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-[13px] font-medium transition-all ${
               active
                 ? "bg-[var(--color-app-surface)] text-[var(--color-app-text)] shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
                 : "text-[var(--color-app-muted)] hover:text-[var(--color-app-text)] hover:bg-[var(--color-app-surface)]/40"
             }`}
           >
-            <span aria-hidden className={active ? "" : "opacity-70"}>{t.icon}</span>
-            <span>{t.label}</span>
+            <span aria-hidden className={`text-base sm:text-sm ${active ? "" : "opacity-70"}`}>{t.icon}</span>
+            <span className="leading-none">{t.label}</span>
             {active && (
               <span
                 aria-hidden

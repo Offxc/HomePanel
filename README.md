@@ -52,7 +52,8 @@ docker compose down
 git pull && docker compose up -d --build
 
 # Back up the database
-cp data/homepanel.db ~/homepanel-backup-$(date +%F).db
+docker run --rm -v homepanel_data:/data -v ~/:/backup alpine \
+  cp /data/homepanel.db /backup/homepanel-backup-$(date +%F).db
 ```
 
 ## Local dev

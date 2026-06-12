@@ -414,14 +414,14 @@ Look at the first red line — that's the root cause. Common ones:
 - `Cannot find module` → build cache is stale. `docker compose down && docker compose up -d --build`.
 - `Error: Cannot bind 0.0.0.0:80` → something else now owns 80. Check `sudo ss -tlnp`.
 
-## Reset everything (DESTRUCTIVE — wipes the database)
+## Reset everything (DESTRUCTIVE — permanently deletes all data)
 
-Only do this if you want to start completely fresh:
+⚠️ **This cannot be undone.** Only do this if you want to start completely fresh with an empty database.
+
 ```bash
 # 🐧 VM
 cd ~/HomePanel
-docker compose down
-rm -rf data
+docker compose down -v          # -v removes the homepanel_data named volume
 docker compose up -d --build
 ```
 
@@ -450,8 +450,9 @@ docker compose down
 git pull
 docker compose up -d --build
 
-# Back up the database (single-file SQLite)
-cp data/homepanel.db ~/homepanel-backup-$(date +%F).db
+# Back up the database (copies out of the named Docker volume)
+docker run --rm -v homepanel_data:/data -v ~/:/backup alpine \
+  cp /data/homepanel.db /backup/homepanel-backup-$(date +%F).db
 
 # See which containers are running
 docker compose ps

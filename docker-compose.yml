@@ -7,7 +7,7 @@ services:
     environment:
       NODE_ENV: production
     volumes:
-      - ./data:/app/data
+      - homepanel_data:/app/data
     expose:
       - "3000"
     networks: [internal]
@@ -42,13 +42,14 @@ services:
     environment:
       APP_INTERNAL_URL: "http://app:3000"
     volumes:
-      - ./data:/data
+      - homepanel_data:/data
     depends_on:
       app:
         condition: service_healthy
     networks: [internal]
 
 volumes:
+  homepanel_data:
   caddy_data:
   caddy_config:
 

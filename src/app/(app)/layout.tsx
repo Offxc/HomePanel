@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { AppHeader } from "@/components/header";
 import { NavTabs, type Tab } from "@/components/nav-tabs";
+import { ToastProvider } from "@/components/toast";
 
 const BASE_TABS: Tab[] = [
   { href: "/today", label: "Today", icon: "☀" },
@@ -24,10 +25,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   ];
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-4">
-      <AppHeader />
-      <NavTabs tabs={tabs} />
-      {children}
-    </div>
+    <ToastProvider>
+      <div className="mx-auto max-w-6xl px-3 sm:px-4 py-3 sm:py-4">
+        <AppHeader />
+        <NavTabs tabs={tabs} />
+        {children}
+      </div>
+    </ToastProvider>
   );
 }
