@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { db } from "@/lib/db";
 import { displayNameFor } from "@/lib/allowlist";
 import { coerceColorKey, type ColorKey } from "@/lib/colors";
@@ -10,7 +11,7 @@ export type HouseholdMember = {
 };
 
 // Returns the household members (Off + Bri) in a stable order: Off → Bri → other.
-export async function getHousehold(): Promise<HouseholdMember[]> {
+export const getHousehold = cache(async (): Promise<HouseholdMember[]> => {
   const rows = await db.user.findMany({
     select: { id: true, name: true, displayName: true, discordId: true, colorKey: true, kanbanEnabled: true },
   });
@@ -26,7 +27,7 @@ export async function getHousehold(): Promise<HouseholdMember[]> {
     return r !== 0 ? r : a.displayName.localeCompare(b.displayName);
   });
   return members;
-}
+});
 
 export function memberById(members: HouseholdMember[], id: string | null | undefined): HouseholdMember | null {
   if (!id) return null;

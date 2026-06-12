@@ -24,6 +24,6 @@ export const authConfig = {
       return isLoggedIn;
     },
   },
-  session: { strategy: "database" },
+  session: { strategy: "jwt" },
   trustHost: true,
 } satisfies NextAuthConfig;

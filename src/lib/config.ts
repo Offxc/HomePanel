@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { db } from "@/lib/db";
 
 export type HouseholdConfig = {
@@ -18,11 +19,11 @@ const DEFAULTS: HouseholdConfig = {
   digestHour: 6,
 };
 
-export async function getHouseholdConfig(): Promise<HouseholdConfig> {
+export const getHouseholdConfig = cache(async (): Promise<HouseholdConfig> => {
   try {
     const row = await db.householdConfig.findUnique({ where: { id: "default" } });
     return row ?? DEFAULTS;
   } catch {
     return DEFAULTS;
   }
-}
+});

@@ -201,8 +201,8 @@ async function sendOrUpdate() {
 
 // ── Scheduling ────────────────────────────────────────────────────────────────
 
-// Every 2 minutes — sendOrUpdate itself checks digestHour and the active window
-cron.schedule("*/2 * * * *", () => {
+// Every minute — sendOrUpdate itself checks digestHour and the active window
+cron.schedule("* * * * *", () => {
   console.log(`${new Date().toLocaleTimeString()} — tick`);
   sendOrUpdate().catch(console.error);
 });
