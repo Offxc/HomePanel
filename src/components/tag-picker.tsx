@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { TagPill } from "@/components/tag-pill";
 import { COLOR_KEYS, COLOR_LABELS } from "@/lib/colors";
-import { createTag } from "@/app/(app)/settings/actions";
 
 export type TagOption = { id: string; name: string; colorKey: string };
 
@@ -29,19 +28,27 @@ export function TagPicker({
 
   const selectedTags = tags.filter((t) => selected.includes(t.id));
 
-  const createTag = async () => {
+  const handleCreateTag = async () => {
     const trimmed = newName.trim();
     if (!trimmed) return;
     setSaving(true);
-    const tag = await createTag(trimmed, newColor);
-    if (tag) {
-      setTags((prev) => [...prev, tag]);
-      setSelected((prev) => [...prev, tag.id]);
+    try {
+      const r = await fetch("/api/tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed, colorKey: newColor }),
+      });
+      if (r.ok) {
+        const tag = await r.json() as { id: string; name: string; colorKey: string };
+        setTags((prev) => [...prev, tag]);
+        setSelected((prev) => [...prev, tag.id]);
+      }
+    } finally {
+      setNewName("");
+      setNewColor("purple");
+      setCreating(false);
+      setSaving(false);
     }
-    setNewName("");
-    setNewColor("purple");
-    setCreating(false);
-    setSaving(false);
   };
 
   return (
@@ -103,7 +110,7 @@ export function TagPicker({
                 autoFocus
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void createTag(); } if (e.key === "Escape") setCreating(false); }}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleCreateTag(); } if (e.key === "Escape") setCreating(false); }}
                 maxLength={30}
                 placeholder="Tag name…"
                 className="w-full rounded-md border px-2 py-1 text-xs bg-transparent"
@@ -133,7 +140,7 @@ export function TagPicker({
                 </button>
                 <button
                   type="button"
-                  onClick={() => void createTag()}
+                  onClick={() => void handleCreateTag()}
                   disabled={saving || !newName.trim()}
                   className="btn-accent text-xs px-3 py-1 rounded-md font-medium disabled:opacity-40"
                 >

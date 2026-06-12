@@ -99,17 +99,6 @@ export async function addTag(formData: FormData) {
   revalidatePath("/today");
 }
 
-export async function createTag(name: string, colorKey: string) {
-  const user = await requireSession();
-  ensureRate(user.id);
-  const parsed = TagAddSchema.parse({ name, colorKey });
-  const tag = await createTagRecord(user.id, parsed.name, parsed.colorKey);
-  revalidatePath("/settings");
-  revalidatePath("/calendar");
-  revalidatePath("/today");
-  return tag;
-}
-
 async function createTagRecord(actorId: string, name: string, colorKey: string) {
   void actorId;
   const max = await db.tag.findFirst({ orderBy: { order: "desc" }, select: { order: true } });
