@@ -94,13 +94,12 @@ export async function addTag(formData: FormData) {
     colorKey: formData.get("colorKey"),
   });
   const max = await db.tag.findFirst({ orderBy: { order: "desc" }, select: { order: true } });
-  const tag = await db.tag.create({
+  await db.tag.create({
     data: { name: parsed.name, colorKey: parsed.colorKey, order: (max?.order ?? 0) + 1 },
   });
   revalidatePath("/settings");
   revalidatePath("/calendar");
   revalidatePath("/today");
-  return { id: tag.id, name: tag.name, colorKey: tag.colorKey };
 }
 
 export async function updateTag(formData: FormData) {

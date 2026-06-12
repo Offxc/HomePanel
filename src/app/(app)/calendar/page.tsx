@@ -299,7 +299,6 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
           members={members}
           allTags={allTags.map((t) => ({ id: t.id, name: t.name, colorKey: t.colorKey }))}
           editingEvent={serializedEditingEvent}
-          editId={editId}
           year={year}
           month={month + 1}
           selectedDay={selectedDay}

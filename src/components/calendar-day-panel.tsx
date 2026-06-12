@@ -49,7 +49,6 @@ export function CalendarDayPanel({
   members,
   allTags,
   editingEvent,
-  editId,
   year,
   month,
   selectedDay,
@@ -62,7 +61,6 @@ export function CalendarDayPanel({
   members: HouseholdMember[];
   allTags: Tag[];
   editingEvent: EditingEvent | null;
-  editId: string | null;
   year: number;
   month: number;
   selectedDay: number;

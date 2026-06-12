@@ -16,7 +16,6 @@ export function WeatherWidget({
   timezone: string;
 }) {
   const [weather, setWeather] = useState<Weather | null>(initial);
-  const [tz, setTz] = useState(timezone);
 
   useEffect(() => {
     async function load() {
@@ -25,7 +24,6 @@ export function WeatherWidget({
         if (r.ok) {
           const data = await r.json();
           if (data.weather) setWeather(data.weather);
-          if (data.timezone) setTz(data.timezone);
         }
       } catch {}
     }
