@@ -10,13 +10,29 @@ const API_SECRET = process.env.INTERNAL_API_SECRET;
 const APP_URL = process.env.APP_INTERNAL_URL ?? "http://app:3000";
 const STATE_FILE = "/data/bot-state.json";
 
-// ── State (tracks which Discord message IDs we sent per date per member) ──────
+// ── State ─────────────────────────────────────────────────────────────────────
+// Shape: { messages: { "<memberId>": "<discordMessageId>" } }
+// Migrates automatically from the old date-keyed format.
 
 function loadState() {
   try {
-    if (existsSync(STATE_FILE)) return JSON.parse(readFileSync(STATE_FILE, "utf8"));
-  } catch {}
-  return {};
+    if (existsSync(STATE_FILE)) {
+      const raw = JSON.parse(readFileSync(STATE_FILE, "utf8"));
+      // Already new format
+      if (raw.messages && typeof raw.messages === "object") return raw;
+      // Old format: { "2026-06-12": { memberId: msgId, ... }, ... }
+      // Grab the most recent date's message IDs and migrate.
+      const dates = Object.keys(raw).filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k)).sort();
+      if (dates.length > 0) {
+        const latest = raw[dates[dates.length - 1]];
+        console.log("Migrating bot state from old date-keyed format →", latest);
+        return { messages: latest };
+      }
+    }
+  } catch (e) {
+    console.error("state load failed:", e.message);
+  }
+  return { messages: {} };
 }
 
 function saveState(state) {
