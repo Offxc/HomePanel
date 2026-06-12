@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useOptimistic } from "react";
 import { addCard, deleteColumn, recolorColumn, renameColumn } from "@/app/(app)/kanban/actions";
 import { COLOR_KEYS, COLOR_LABELS } from "@/lib/colors";
 import { KanbanCard, type KanbanCardData } from "@/components/kanban-card";
@@ -27,6 +27,10 @@ export function KanbanColumn({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [newCard, setNewCard] = useState("");
   const [pending, start] = useTransition();
+  const [optimisticCards, addOptimisticCard] = useOptimistic(
+    cards,
+    (state: KanbanCardData[], c: KanbanCardData) => [...state, c],
+  );
 
   const saveName = () => {
     const trimmed = name.trim();
@@ -77,9 +81,10 @@ export function KanbanColumn({
     const fd = new FormData();
     fd.append("columnId", column.id);
     fd.append("title", trimmed);
+    setNewCard("");
     start(async () => {
+      addOptimisticCard({ id: `__opt_${Date.now()}`, title: trimmed });
       await addCard(fd);
-      setNewCard("");
     });
   };
 
@@ -127,7 +132,7 @@ export function KanbanColumn({
             {column.name}
           </button>
         )}
-        <span className="text-[10px] text-[var(--color-app-muted)] tabular-nums">{cards.length}</span>
+        <span className="text-[10px] text-[var(--color-app-muted)] tabular-nums">{optimisticCards.length}</span>
         <button
           type="button"
           onClick={remove}
@@ -159,10 +164,10 @@ export function KanbanColumn({
       )}
 
       <div className="space-y-1.5 flex-1 min-h-[40px]">
-        {cards.map((c) => (
+        {optimisticCards.map((c) => (
           <KanbanCard key={c.id} card={c} prevColumnId={prevColumnId} nextColumnId={nextColumnId} />
         ))}
-        {cards.length === 0 && (
+        {optimisticCards.length === 0 && (
           <p className="text-[11px] text-[var(--color-app-muted)] italic py-2 px-1">No cards yet.</p>
         )}
       </div>

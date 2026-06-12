@@ -2,9 +2,15 @@
 
 import { useState } from "react";
 
-export function RecurrenceFields() {
-  const [freq, setFreq] = useState("");
-  const [forever, setForever] = useState(false);
+export function RecurrenceFields({
+  defaultFreq = "",
+  defaultUntil = "",
+}: {
+  defaultFreq?: string;
+  defaultUntil?: string;
+} = {}) {
+  const [freq, setFreq] = useState(defaultFreq);
+  const [forever, setForever] = useState(!!defaultFreq && !defaultUntil);
 
   return (
     <div className="col-span-2 grid grid-cols-2 gap-2">

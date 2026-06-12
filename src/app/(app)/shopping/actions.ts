@@ -40,7 +40,6 @@ export async function addShopItem(formData: FormData) {
     },
   });
   revalidatePath("/shopping");
-  revalidatePath("/today");
 }
 
 export async function toggleShopItem(formData: FormData) {
@@ -56,7 +55,6 @@ export async function toggleShopItem(formData: FormData) {
       : { done: true, doneAt: new Date(), doneById: user.id },
   });
   revalidatePath("/shopping");
-  revalidatePath("/today");
 }
 
 export async function deleteShopItem(formData: FormData) {
@@ -66,7 +64,6 @@ export async function deleteShopItem(formData: FormData) {
   await db.shoppingItem.delete({ where: { id } });
   await audit("shop.delete", { actorId: user.id, detail: `id=${id}` });
   revalidatePath("/shopping");
-  revalidatePath("/today");
 }
 
 export async function clearDone() {

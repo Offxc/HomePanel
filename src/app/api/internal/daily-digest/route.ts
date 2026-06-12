@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
   const dayStart = startOfDay(now);
   const dayEnd = endOfDay(now);
 
-  const [members, rawEvents, openShop] = await Promise.all([
+  const [members, rawEvents, openShop, userRows] = await Promise.all([
     getHousehold(),
     db.event.findMany({
       where: {
@@ -44,7 +44,10 @@ export async function GET(req: NextRequest) {
       where: { done: false },
       orderBy: { createdAt: "asc" },
     }),
+    db.user.findMany({ select: { id: true, discordId: true } }),
   ]);
+
+  const discordIdByUser = new Map(userRows.map((u) => [u.id, u.discordId ?? null]));
 
   // Expand recurring events and collect all today instances
   type Instance = {
@@ -85,6 +88,7 @@ export async function GET(req: NextRequest) {
     id: m.id,
     displayName: m.displayName,
     colorHex: COLOR_HEX[m.colorKey] ?? "#6B7280",
+    discordId: discordIdByUser.get(m.id) ?? null,
     events: allInstances
       .filter((i) => i.assigneeId === m.id || i.assigneeId === null)
       .map(({ assigneeId: _id, ...rest }) => rest),

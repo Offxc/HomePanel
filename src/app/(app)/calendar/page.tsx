@@ -15,9 +15,9 @@ import { indexHolidays } from "@/lib/holidays";
 import { getHouseholdConfig } from "@/lib/config";
 import { expandRecurrence } from "@/lib/recur";
 import { seasonForMonth } from "@/lib/season";
-import { addEvent, deleteEvent } from "./actions";
+import { addEvent, deleteEvent, editEvent } from "./actions";
 
-type SearchParams = Promise<{ y?: string; m?: string; d?: string }>;
+type SearchParams = Promise<{ y?: string; m?: string; d?: string; edit?: string }>;
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -31,6 +31,10 @@ function pad(n: number): string {
 
 function isoLocalDateTime(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function isoLocalDate(d: Date): string {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 type DbEvent = {
@@ -66,6 +70,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
   const year = sp.y ? Number(sp.y) : today.getFullYear();
   const month = sp.m ? Number(sp.m) - 1 : today.getMonth();
   const selectedDay = sp.d ? Number(sp.d) : null;
+  const editId = sp.edit ?? null;
 
   const monthStart = new Date(year, month, 1);
   const firstDow = (monthStart.getDay() + 6) % 7;
@@ -95,6 +100,8 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
     getHousehold(),
     db.tag.findMany({ orderBy: { order: "asc" } }),
   ]);
+
+  const editingEvent = editId ? (rawEvents.find((e) => e.id === editId) ?? null) : null;
 
   // Build occurrences map.
   type Occurrence = { event: DbEvent; at: Date };
@@ -295,6 +302,14 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
                   </div>
                 </div>
                 <OwnerPill name={assigneeName(o.event)} colorKey={assigneeColor(o.event)} />
+                <Link
+                  href={`/calendar?y=${year}&m=${month + 1}&d=${selectedDay}&edit=${o.event.id}`}
+                  aria-label="Edit event"
+                  title="Edit event"
+                  className="w-7 h-7 inline-flex items-center justify-center rounded-md text-[var(--color-app-muted)] hover:bg-[var(--color-app-bg)] hover:text-[var(--color-app-text)] transition-colors text-base"
+                >
+                  ✎
+                </Link>
                 <form action={deleteEvent}>
                   <input type="hidden" name="id" value={o.event.id} />
                   <button
@@ -310,54 +325,130 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
             ))}
           </ul>
 
-          <form action={addEvent} className="mt-4 grid grid-cols-2 gap-2">
-            <input
-              name="title"
-              required
-              maxLength={200}
-              placeholder="Title"
-              className="col-span-2 rounded-md border px-3 py-2 text-sm bg-transparent"
-            />
-            <input
-              name="location"
-              maxLength={120}
-              placeholder="Location (optional)"
-              className="col-span-2 rounded-md border px-3 py-2 text-sm bg-transparent"
-            />
-            <input
-              name="startsAt"
-              type="datetime-local"
-              required
-              defaultValue={isoLocalDateTime(formDefaultStart)}
-              className="rounded-md border px-2 py-2 text-sm bg-transparent"
-            />
-            <input
-              name="endsAt"
-              type="datetime-local"
-              className="rounded-md border px-2 py-2 text-sm bg-transparent"
-            />
-            <label className="flex items-center gap-2 text-sm text-[var(--color-app-muted)] col-span-2">
-              <input type="checkbox" name="allDay" className="accent-[var(--color-accent)]" /> All day
-            </label>
-
-            <RecurrenceFields />
-
-            <div className="col-span-2 flex items-center flex-wrap gap-3 pt-1 border-t pt-3">
-              <AssigneeRadio name="assigneeId" members={members} defaultValue={user.id} />
-              <TagPicker
-                name="tagIds"
-                available={allTags.map((t) => ({ id: t.id, name: t.name, colorKey: t.colorKey }))}
+          {editingEvent ? (
+            <form action={editEvent} className="mt-4 grid grid-cols-2 gap-2">
+              <input type="hidden" name="id" value={editingEvent.id} />
+              <input type="hidden" name="_y" value={String(year)} />
+              <input type="hidden" name="_m" value={String(month + 1)} />
+              <input type="hidden" name="_d" value={String(selectedDay)} />
+              <div className="col-span-2 flex items-center justify-between mb-1">
+                <span className="text-xs font-medium text-[var(--color-app-muted)]">Edit event</span>
+                <Link
+                  href={`/calendar?y=${year}&m=${month + 1}&d=${selectedDay}`}
+                  className="text-xs text-[var(--color-app-muted)] hover:text-[var(--color-app-text)]"
+                >
+                  Cancel
+                </Link>
+              </div>
+              <input
+                name="title"
+                required
+                maxLength={200}
+                placeholder="Title"
+                defaultValue={editingEvent.title}
+                className="col-span-2 rounded-md border px-3 py-2 text-sm bg-transparent"
               />
-            </div>
-            <div className="col-span-2 flex justify-end">
-              <button
-                type="submit"
-                className="btn-accent text-sm px-4 py-2 rounded-md font-medium"
-              >
-                Add event
-              </button>
-            </div>
-          </form>
+              <input
+                name="location"
+                maxLength={120}
+                placeholder="Location (optional)"
+                defaultValue={editingEvent.location ?? ""}
+                className="col-span-2 rounded-md border px-3 py-2 text-sm bg-transparent"
+              />
+              <input
+                name="startsAt"
+                type="datetime-local"
+                required
+                defaultValue={isoLocalDateTime(editingEvent.startsAt)}
+                className="rounded-md border px-2 py-2 text-sm bg-transparent"
+              />
+              <input
+                name="endsAt"
+                type="datetime-local"
+                defaultValue={editingEvent.endsAt ? isoLocalDateTime(editingEvent.endsAt) : ""}
+                className="rounded-md border px-2 py-2 text-sm bg-transparent"
+              />
+              <label className="flex items-center gap-2 text-sm text-[var(--color-app-muted)] col-span-2">
+                <input
+                  type="checkbox"
+                  name="allDay"
+                  defaultChecked={editingEvent.allDay}
+                  className="accent-[var(--color-accent)]"
+                /> All day
+              </label>
+
+              <RecurrenceFields
+                defaultFreq={editingEvent.recurFreq ?? ""}
+                defaultUntil={editingEvent.recurUntil ? isoLocalDate(editingEvent.recurUntil) : ""}
+              />
+
+              <div className="col-span-2 flex items-center flex-wrap gap-3 pt-1 border-t pt-3">
+                <AssigneeRadio name="assigneeId" members={members} defaultValue={editingEvent.assigneeId ?? ""} />
+                <TagPicker
+                  name="tagIds"
+                  available={allTags.map((t) => ({ id: t.id, name: t.name, colorKey: t.colorKey }))}
+                  defaultSelectedIds={editingEvent.tags.map((et) => et.tag.id)}
+                />
+              </div>
+              <div className="col-span-2 flex justify-end">
+                <button
+                  type="submit"
+                  className="btn-accent text-sm px-4 py-2 rounded-md font-medium"
+                >
+                  Save changes
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form action={addEvent} className="mt-4 grid grid-cols-2 gap-2">
+              <input
+                name="title"
+                required
+                maxLength={200}
+                placeholder="Title"
+                className="col-span-2 rounded-md border px-3 py-2 text-sm bg-transparent"
+              />
+              <input
+                name="location"
+                maxLength={120}
+                placeholder="Location (optional)"
+                className="col-span-2 rounded-md border px-3 py-2 text-sm bg-transparent"
+              />
+              <input
+                name="startsAt"
+                type="datetime-local"
+                required
+                defaultValue={isoLocalDateTime(formDefaultStart)}
+                className="rounded-md border px-2 py-2 text-sm bg-transparent"
+              />
+              <input
+                name="endsAt"
+                type="datetime-local"
+                className="rounded-md border px-2 py-2 text-sm bg-transparent"
+              />
+              <label className="flex items-center gap-2 text-sm text-[var(--color-app-muted)] col-span-2">
+                <input type="checkbox" name="allDay" className="accent-[var(--color-accent)]" /> All day
+              </label>
+
+              <RecurrenceFields />
+
+              <div className="col-span-2 flex items-center flex-wrap gap-3 pt-1 border-t pt-3">
+                <AssigneeRadio name="assigneeId" members={members} defaultValue={user.id} />
+                <TagPicker
+                  name="tagIds"
+                  available={allTags.map((t) => ({ id: t.id, name: t.name, colorKey: t.colorKey }))}
+                />
+              </div>
+              <div className="col-span-2 flex justify-end">
+                <button
+                  type="submit"
+                  className="btn-accent text-sm px-4 py-2 rounded-md font-medium"
+                >
+                  Add event
+                </button>
+              </div>
+            </form>
+          )}
         </Card>
       ) : (
         <Card hover>

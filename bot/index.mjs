@@ -146,7 +146,8 @@ async function sendOrUpdate(forceNew = false) {
         // Message may have been deleted — send a fresh one
         console.error(`[${member.displayName}] edit failed (${e.message}), sending new`);
         try {
-          const msg = await discord("POST", `/channels/${channelId}/messages`, { embeds: [embed] });
+          const mention = member.discordId ? `<@${member.discordId}>` : undefined;
+          const msg = await discord("POST", `/channels/${channelId}/messages`, { content: mention, embeds: [embed] });
           state[today][member.id] = msg.id;
           console.log(`[${member.displayName}] sent new message ${msg.id}`);
         } catch (e2) {
@@ -155,7 +156,8 @@ async function sendOrUpdate(forceNew = false) {
       }
     } else {
       try {
-        const msg = await discord("POST", `/channels/${channelId}/messages`, { embeds: [embed] });
+        const mention = member.discordId ? `<@${member.discordId}>` : undefined;
+        const msg = await discord("POST", `/channels/${channelId}/messages`, { content: mention, embeds: [embed] });
         state[today][member.id] = msg.id;
         console.log(`[${member.displayName}] sent message ${msg.id}`);
       } catch (e) {
@@ -181,8 +183,8 @@ cron.schedule("0 7 * * *", () => {
   sendOrUpdate(true).catch(console.error);
 });
 
-// Every 15 minutes between 7am and 11pm — silently edit the existing message
-cron.schedule("*/15 * * * *", () => {
+// Every 2 minutes between 7am and 11pm — silently edit the existing message
+cron.schedule("*/2 * * * *", () => {
   const h = new Date().getHours();
   if (h >= 7 && h < 23) {
     console.log(`${new Date().toLocaleTimeString()} — refreshing digest`);
