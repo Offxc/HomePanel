@@ -99,7 +99,6 @@ export function CalendarDayPanel({
       assigneeId,
       assigneeName: member?.displayName ?? "Both",
       assigneeColorKey: member?.colorKey ?? "gray",
-      pending: true,
     });
 
     formRef.current?.reset();

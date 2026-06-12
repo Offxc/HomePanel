@@ -44,7 +44,7 @@ export async function getWeather(lat: number, lng: number): Promise<Weather | nu
   if (cached?.weather && now - cached.at < TTL_MS) return cached.weather;
   try {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&timezone=auto`;
-    const r = await fetch(url, { next: { revalidate: 900 } });
+    const r = await fetch(url, { signal: AbortSignal.timeout(5000), cache: "no-store" });
     if (!r.ok) throw new Error(`weather ${r.status}`);
     const j = (await r.json()) as { current?: { temperature_2m?: number; weather_code?: number } };
     const tempC = Math.round(j.current?.temperature_2m ?? NaN);

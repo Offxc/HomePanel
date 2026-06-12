@@ -80,7 +80,7 @@ function colorInt(hex) {
   return parseInt(hex.replace("#", ""), 16);
 }
 
-function buildEmbed(member, dateLabel, updatedAt) {
+function buildEmbed(member, dateLabel) {
   // Events
   let eventsValue;
   if (member.events.length === 0) {
@@ -115,15 +115,14 @@ function buildEmbed(member, dateLabel, updatedAt) {
     title: `${member.displayName}'s day  ·  ${dateLabel}`,
     color: colorInt(member.colorHex),
     fields,
-    footer: { text: `Updated ${updatedAt}  ·  home.offlabs.cc` },
-    timestamp: new Date().toISOString(),
+    footer: { text: `home.offlabs.cc` },
   };
 }
 
 // ── Core send/update logic ────────────────────────────────────────────────────
 // One persistent message per channel per day — @mentions on first post, silent edits after.
 
-async function sendOrUpdate() {
+async function sendOrUpdate({ force = false } = {}) {
   if (!BOT_TOKEN) { console.error("DISCORD_BOT_TOKEN not set — skipping"); return; }
   if (!API_SECRET) { console.error("INTERNAL_API_SECRET not set — skipping"); return; }
 
@@ -140,7 +139,7 @@ async function sendOrUpdate() {
   const currentHour = now.getHours();
 
   // Outside active window — before the configured digest hour or after 11pm
-  if (currentHour < digestHour || currentHour >= 23) return;
+  if (!force && (currentHour < digestHour || currentHour >= 23)) return;
 
   const state = loadState();
   if (!state.messages) state.messages = {};
@@ -153,7 +152,6 @@ async function sendOrUpdate() {
     state.date = todayStr;
   }
 
-  const updatedAt = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true });
   const dateLabel = now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
 
   for (const member of digest.members) {
@@ -165,7 +163,7 @@ async function sendOrUpdate() {
       continue;
     }
 
-    const embed = buildEmbed(member, dateLabel, updatedAt);
+    const embed = buildEmbed(member, dateLabel);
     const existingId = state.messages[member.id];
 
     if (existingId) {
@@ -199,16 +197,60 @@ async function sendOrUpdate() {
   saveState(state);
 }
 
+// ── Startup cleanup ───────────────────────────────────────────────────────────
+// On restart: delete any previously-posted embeds, then post fresh ones.
+
+async function startup() {
+  if (!BOT_TOKEN || !API_SECRET) {
+    console.error("Missing DISCORD_BOT_TOKEN or INTERNAL_API_SECRET — startup skipped");
+    return;
+  }
+
+  let digest;
+  try {
+    digest = await fetchDigest();
+  } catch (e) {
+    console.error("Startup: could not fetch digest:", e.message);
+    return;
+  }
+
+  const state = loadState();
+  let deleted = 0;
+
+  for (const member of digest.members) {
+    const envKey = `DISCORD_CHANNEL_${member.displayName.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`;
+    const channelId = member.discordChannelId || process.env[envKey];
+    const oldMsgId = (state.messages ?? {})[member.id];
+    if (channelId && oldMsgId) {
+      try {
+        await discord("DELETE", `/channels/${channelId}/messages/${oldMsgId}`);
+        console.log(`Startup: deleted old embed for ${member.displayName}`);
+        deleted++;
+      } catch (e) {
+        // 404 means already gone — that's fine
+        if (!e.message.includes("404")) {
+          console.error(`Startup: delete failed for ${member.displayName}: ${e.message}`);
+        }
+      }
+    }
+  }
+
+  // Clear state so the next sendOrUpdate does a fresh POST with @mention
+  state.messages = {};
+  state.date = null;
+  saveState(state);
+  console.log(`Startup: cleared ${deleted} old embed(s) — posting fresh`);
+
+  await sendOrUpdate({ force: true });
+}
+
 // ── Scheduling ────────────────────────────────────────────────────────────────
 
-// Every minute — sendOrUpdate itself checks digestHour and the active window
+// Every minute — sendOrUpdate checks the active window
 cron.schedule("* * * * *", () => {
   console.log(`${new Date().toLocaleTimeString()} — tick`);
   sendOrUpdate().catch(console.error);
 });
 
-// Startup: attempt immediately (sendOrUpdate will skip if outside the window)
-console.log("Startup: attempting digest post/update");
-sendOrUpdate().catch(console.error);
-
-console.log("HomePanel bot running");
+console.log("HomePanel bot starting");
+startup().catch(console.error);

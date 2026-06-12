@@ -83,6 +83,17 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
   const todaysItems = instances.filter((i) => i.at <= dayEnd);
   const upcomingItems = instances.filter((i) => i.at > dayEnd);
 
+  // Group today's events by first tag (each event appears once)
+  type TagInfo = { id: string; name: string; colorKey: string };
+  const todayTagGroups = new Map<string, { tag: TagInfo | null; items: Inst[] }>();
+  for (const i of todaysItems) {
+    const firstTag = i.event.tags[0]?.tag ?? null;
+    const k = firstTag?.id ?? "__untagged__";
+    const g = todayTagGroups.get(k) ?? { tag: firstTag, items: [] };
+    g.items.push(i);
+    todayTagGroups.set(k, g);
+  }
+
   const [openShopCount, topOpenShop] = await Promise.all([
     db.shoppingItem.count({ where: { done: false } }),
     db.shoppingItem.findMany({
@@ -92,7 +103,6 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
     }),
   ]);
 
-  type TagInfo = { id: string; name: string; colorKey: string };
   const tagGroups = new Map<string, { tag: TagInfo | null; items: Inst[] }>();
   for (const i of upcomingItems) {
     if (i.event.tags.length === 0) {
@@ -125,28 +135,45 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
           {todaysItems.length === 0 && (
             <p className="text-xs text-[var(--color-app-muted)]">Nothing scheduled.</p>
           )}
-          <ul>
-            {todaysItems.map((i, idx) => (
-              <li
-                key={`${i.event.id}-${i.at.getTime()}-${idx}`}
-                className="flex items-center gap-3 py-2.5 border-t first:border-t-0"
-              >
-                <div className="time-badge px-2.5 py-1.5 rounded-md text-sm font-medium tabular-nums min-w-[58px] text-center">
-                  {i.event.allDay ? "All day" : formatTime(i.at).slice(0, 5)}
+          {Array.from(todayTagGroups.entries()).map(([key, group], groupIdx) => (
+            <div key={key} className={groupIdx > 0 ? "border-t mt-2 pt-2" : ""}>
+              {(group.tag !== null || todayTagGroups.size > 1) && (
+                <div className="flex items-center gap-2 mb-1">
+                  {group.tag ? (
+                    <TagPill name={group.tag.name} colorKey={group.tag.colorKey} />
+                  ) : (
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-app-muted)]/70">
+                      Untagged
+                    </span>
+                  )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium leading-tight">{i.event.title}</div>
-                  <div className="text-xs text-[var(--color-app-muted)] mt-0.5 flex items-center gap-2 flex-wrap">
-                    {i.event.location && <span>{i.event.location}</span>}
-                    {i.event.tags.map((et) => (
-                      <TagPill key={et.tag.id} name={et.tag.name} colorKey={et.tag.colorKey} size="xs" />
-                    ))}
-                  </div>
-                </div>
-                <OwnerPill name={assigneeName(i.event)} colorKey={assigneeColor(i.event)} />
-              </li>
-            ))}
-          </ul>
+              )}
+              <ul>
+                {group.items.map((i, idx) => (
+                  <li
+                    key={`${i.event.id}-${i.at.getTime()}-${idx}`}
+                    className="flex items-center gap-3 py-2.5 border-t first:border-t-0"
+                  >
+                    <div className="time-badge px-2.5 py-1.5 rounded-md text-sm font-medium tabular-nums min-w-[58px] text-center">
+                      {i.event.allDay ? "All day" : formatTime(i.at).slice(0, 5)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium leading-tight">{i.event.title}</div>
+                      {(i.event.location || i.event.tags.length > 1) && (
+                        <div className="text-xs text-[var(--color-app-muted)] mt-0.5 flex items-center gap-2 flex-wrap">
+                          {i.event.location && <span>{i.event.location}</span>}
+                          {i.event.tags.slice(1).map((et) => (
+                            <TagPill key={et.tag.id} name={et.tag.name} colorKey={et.tag.colorKey} size="xs" />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <OwnerPill name={assigneeName(i.event)} colorKey={assigneeColor(i.event)} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </Card>
 
         <Card hover>

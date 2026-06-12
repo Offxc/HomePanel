@@ -30,15 +30,19 @@ export function WeatherWidget({
     return () => clearInterval(id);
   }, [initial]);
 
-  if (!weather) return null;
-
   return (
     <span className="inline-flex items-center gap-1 flex-shrink-0 text-xs text-[var(--color-app-muted)]">
       <span aria-hidden>·</span>
-      <span aria-hidden className="text-base leading-none">{weather.icon}</span>
-      <span className="tabular-nums font-medium text-[var(--color-app-text)]">{weather.tempC}°C</span>
-      <span className="hidden sm:inline">{weather.label}</span>
-      <span className="hidden md:inline text-[var(--color-app-muted)]/70">· {city}</span>
+      {weather ? (
+        <>
+          <span aria-hidden className="text-base leading-none">{weather.icon}</span>
+          <span className="tabular-nums font-medium text-[var(--color-app-text)]">{weather.tempC}°C</span>
+          <span className="hidden sm:inline">{weather.label}</span>
+          <span className="hidden md:inline text-[var(--color-app-muted)]/70">· {city}</span>
+        </>
+      ) : (
+        <span className="tabular-nums text-[var(--color-app-muted)]/50">{city}</span>
+      )}
     </span>
   );
 }
