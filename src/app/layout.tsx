@@ -6,6 +6,10 @@ export const metadata: Metadata = {
   description: "Shared household panel",
   robots: { index: false, follow: false },
   manifest: "/manifest.webmanifest",
+  icons: {
+    icon: "/icons/icon-192.png",
+    apple: "/icons/icon-512.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
