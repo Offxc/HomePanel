@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   const dayStart = startOfDay(now);
   const dayEnd = endOfDay(now);
 
-  const [members, rawEvents, openShop, userRows] = await Promise.all([
+  const [members, rawEvents, openShop, userRows, discordAccounts] = await Promise.all([
     getHousehold(),
     db.event.findMany({
       where: {
@@ -46,9 +46,13 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: "asc" },
     }),
     db.user.findMany({ select: { id: true, discordId: true, discordChannelId: true } }),
+    db.account.findMany({ where: { provider: "discord" }, select: { userId: true, providerAccountId: true } }),
   ]);
 
-  const discordIdByUser = new Map(userRows.map((u) => [u.id, u.discordId ?? null]));
+  // Prefer the Account table for Discord snowflake IDs — it's always authoritative.
+  // Fall back to User.discordId for any user without a linked Account row.
+  const discordIdFromAccount = new Map(discordAccounts.map((a) => [a.userId, a.providerAccountId]));
+  const discordIdByUser = new Map(userRows.map((u) => [u.id, discordIdFromAccount.get(u.id) ?? u.discordId ?? null]));
   const channelIdByUser = new Map(userRows.map((u) => [u.id, u.discordChannelId ?? null]));
 
   // Expand recurring events and collect all today instances
