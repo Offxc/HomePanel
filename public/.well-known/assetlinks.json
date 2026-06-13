@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "cc.offlabs.home.twa",
+    "sha256_cert_fingerprints": ["25:AE:73:E3:4A:5D:50:96:76:D6:FB:9B:C0:01:1C:6A:52:A5:F3:5E:87:3C:70:79:6A:61:DE:46:1A:B9:9C:A1"]
+  }
+}]
