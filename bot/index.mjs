@@ -235,6 +235,18 @@ async function startup() {
     }
   }
 
+  // Only delete + repost if we're inside the active window.
+  // Outside the window (overnight restarts, early morning) leave things alone —
+  // the cron will post at the correct hour without pinging anyone unexpectedly.
+  const digestHour = typeof digest.digestHour === "number" ? digest.digestHour : 6;
+  const currentHour = new Date().getHours();
+  const inWindow = currentHour >= digestHour && currentHour < 23;
+
+  if (!inWindow) {
+    console.log(`Startup: outside active window (${currentHour}h < ${digestHour}h or >= 23h) — skipping cleanup`);
+    return;
+  }
+
   // Clear state so the next sendOrUpdate does a fresh POST with @mention
   state.messages = {};
   state.date = null;
