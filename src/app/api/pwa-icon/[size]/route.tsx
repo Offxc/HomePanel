@@ -1,38 +1,16 @@
 import { ImageResponse } from "next/og";
+import { readFileSync } from "fs";
+import { join } from "path";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ size: string }> }) {
   const { size: sizeParam } = await params;
-  const size = Math.min(512, Math.max(16, Number(sizeParam) || 192));
-  const radius = Math.round(size * 0.2);
-  const fontSize = Math.round(size * 0.52);
+  const size = Math.min(512, Math.max(32, Number(sizeParam) || 192));
+
+  const svg = readFileSync(join(process.cwd(), "public", "icons", "icon.svg"), "utf8");
+  const src = `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
 
   return new ImageResponse(
-    (
-      <div
-        style={{
-          width: size,
-          height: size,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#1D9E75",
-          borderRadius: radius,
-        }}
-      >
-        <span
-          style={{
-            fontSize,
-            fontWeight: 700,
-            color: "white",
-            fontFamily: "sans-serif",
-            letterSpacing: "-0.04em",
-            lineHeight: 1,
-          }}
-        >
-          H
-        </span>
-      </div>
-    ),
+    <img src={src} width={size} height={size} />,
     { width: size, height: size },
   );
 }
