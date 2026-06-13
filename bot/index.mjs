@@ -122,7 +122,7 @@ function buildEmbed(member, dateLabel) {
 // ── Core send/update logic ────────────────────────────────────────────────────
 // One persistent message per channel per day — @mentions on first post, silent edits after.
 
-async function sendOrUpdate({ force = false } = {}) {
+async function sendOrUpdate({ force = false, suppressMention = false } = {}) {
   if (!BOT_TOKEN) { console.error("DISCORD_BOT_TOKEN not set — skipping"); return; }
   if (!API_SECRET) { console.error("INTERNAL_API_SECRET not set — skipping"); return; }
 
@@ -174,7 +174,7 @@ async function sendOrUpdate({ force = false } = {}) {
         // Message was deleted — send a fresh one and remember the new ID
         console.error(`[${member.displayName}] edit failed (${e.message}), sending new`);
         try {
-          const mention = member.discordId ? `<@${member.discordId}>` : undefined;
+          const mention = (!suppressMention && member.discordId) ? `<@${member.discordId}>` : undefined;
           const msg = await discord("POST", `/channels/${channelId}/messages`, { content: mention, embeds: [embed] });
           state.messages[member.id] = msg.id;
           console.log(`[${member.displayName}] sent replacement message ${msg.id}`);
@@ -184,7 +184,7 @@ async function sendOrUpdate({ force = false } = {}) {
       }
     } else {
       try {
-        const mention = member.discordId ? `<@${member.discordId}>` : undefined;
+        const mention = (!suppressMention && member.discordId) ? `<@${member.discordId}>` : undefined;
         const msg = await discord("POST", `/channels/${channelId}/messages`, { content: mention, embeds: [embed] });
         state.messages[member.id] = msg.id;
         console.log(`[${member.displayName}] sent initial message ${msg.id}`);
@@ -214,6 +214,18 @@ async function startup() {
     return;
   }
 
+  // Check window FIRST — overnight/early restarts do nothing.
+  // @mentions only come from the 6am cron, never from a restart.
+  const digestHour = typeof digest.digestHour === "number" ? digest.digestHour : 6;
+  const currentHour = new Date().getHours();
+  const inWindow = currentHour >= digestHour && currentHour < 23;
+
+  if (!inWindow) {
+    console.log(`Startup: outside active window (${currentHour}h, window=${digestHour}-22) — doing nothing`);
+    return;
+  }
+
+  // In window: delete stale embeds, then re-post silently (no @mention)
   const state = loadState();
   let deleted = 0;
 
@@ -227,7 +239,6 @@ async function startup() {
         console.log(`Startup: deleted old embed for ${member.displayName}`);
         deleted++;
       } catch (e) {
-        // 404 means already gone — that's fine
         if (!e.message.includes("404")) {
           console.error(`Startup: delete failed for ${member.displayName}: ${e.message}`);
         }
@@ -235,25 +246,12 @@ async function startup() {
     }
   }
 
-  // Only delete + repost if we're inside the active window.
-  // Outside the window (overnight restarts, early morning) leave things alone —
-  // the cron will post at the correct hour without pinging anyone unexpectedly.
-  const digestHour = typeof digest.digestHour === "number" ? digest.digestHour : 6;
-  const currentHour = new Date().getHours();
-  const inWindow = currentHour >= digestHour && currentHour < 23;
-
-  if (!inWindow) {
-    console.log(`Startup: outside active window (${currentHour}h < ${digestHour}h or >= 23h) — skipping cleanup`);
-    return;
-  }
-
-  // Clear state so the next sendOrUpdate does a fresh POST with @mention
   state.messages = {};
   state.date = null;
   saveState(state);
-  console.log(`Startup: cleared ${deleted} old embed(s) — posting fresh`);
+  console.log(`Startup: cleared ${deleted} old embed(s) — posting fresh (no @mention)`);
 
-  await sendOrUpdate({ force: true });
+  await sendOrUpdate({ force: true, suppressMention: true });
 }
 
 // ── Scheduling ────────────────────────────────────────────────────────────────
