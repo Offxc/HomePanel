@@ -1,15 +1,14 @@
-# HomePanel reverse proxy on home.offlabs.cc.
+# HomePanel reverse proxy. Replace YOUR_DOMAIN and YOUR_EMAIL before deploying.
 # Caddy obtains and renews a Let's Encrypt cert automatically.
-# Replace the email below before deploying.
 
 {
-    email you@offlabs.cc
+    email YOUR_EMAIL
     servers {
         protocols h1 h2 h3
     }
 }
 
-home.offlabs.cc {
+YOUR_DOMAIN {
     encode zstd gzip
 
     reverse_proxy app:3000 {

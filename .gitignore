@@ -1,4 +1,6 @@
 .claude
+# TWA asset links contains your domain + APK signing fingerprint — keep off public repos
+public/.well-known/assetlinks.json
 node_modules
 .next
 out

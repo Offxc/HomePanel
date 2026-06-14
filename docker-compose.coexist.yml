@@ -1,7 +1,7 @@
 # Override file for the case where another service (a SaaS panel, etc.) already
 # owns ports 80/443 on the host. This skips our bundled Caddy and binds the
 # app to 127.0.0.1:3000 only — your existing reverse proxy adds a site block
-# for home.offlabs.cc → 127.0.0.1:3000.
+# for your-domain.example.com → 127.0.0.1:3000.
 #
 # Run with:
 #   docker compose -f docker-compose.yml -f docker-compose.coexist.yml up -d --build

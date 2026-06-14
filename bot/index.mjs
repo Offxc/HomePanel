@@ -8,6 +8,7 @@ import { readFileSync, writeFileSync, existsSync } from "fs";
 const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const API_SECRET = process.env.INTERNAL_API_SECRET;
 const APP_URL = process.env.APP_INTERNAL_URL ?? "http://app:3000";
+const APP_PUBLIC_URL = process.env.APP_PUBLIC_URL ?? "home.offlabs.cc";
 const STATE_FILE = "/data/bot-state.json";
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -115,7 +116,7 @@ function buildEmbed(member, dateLabel) {
     title: `${member.displayName}'s day  ·  ${dateLabel}`,
     color: colorInt(member.colorHex),
     fields,
-    footer: { text: `home.offlabs.cc` },
+    footer: { text: APP_PUBLIC_URL },
   };
 }
 
