@@ -159,7 +159,9 @@ export async function deleteEvent(formData: FormData) {
   const user = await requireSession();
   ensureRate(user.id);
   const { id } = IdSchema.parse({ id: formData.get("id") });
-  await db.event.delete({ where: { id } });
-  await audit("event.delete", { actorId: user.id, detail: `id=${id}` });
+  // deleteMany is idempotent — a double-tap or a row the other partner already
+  // removed becomes a no-op instead of an unhandled Prisma P2025.
+  const { count } = await db.event.deleteMany({ where: { id } });
+  if (count > 0) await audit("event.delete", { actorId: user.id, detail: `id=${id}` });
   revalidatePath("/calendar");
 }

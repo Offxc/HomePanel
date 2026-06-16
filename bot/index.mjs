@@ -1,6 +1,8 @@
 // HomePanel daily digest bot.
 // Posts one embed per household member at the configured digest hour (@ mentions them),
-// then silently edits it every 2 minutes throughout the day — no re-pinging.
+// then silently edits it through the day — but only when the content actually changes,
+// so the "Updated HH:MM" footer reflects the last real change instead of churning the
+// Discord API every minute. No re-pinging on edits.
 
 import cron from "node-cron";
 import { readFileSync, writeFileSync, existsSync } from "fs";
@@ -9,31 +11,33 @@ const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const API_SECRET = process.env.INTERNAL_API_SECRET;
 const APP_URL = process.env.APP_INTERNAL_URL ?? "http://app:3000";
 const APP_PUBLIC_URL = process.env.APP_PUBLIC_URL ?? "home.offlabs.cc";
+const FALLBACK_TZ = process.env.TZ || "America/Toronto";
 const STATE_FILE = "/data/bot-state.json";
 
 // ── State ─────────────────────────────────────────────────────────────────────
-// Shape: { date: "YYYY-MM-DD", messages: { "<memberId>": "<discordMessageId>" } }
-// date tracks which calendar day the current messages belong to.
-// When the date rolls over, messages are cleared and a fresh @mention post is made.
+// Shape: { date: "YYYY-MM-DD", messages: { memberId: msgId }, content: { memberId: signature } }
+// `content` is the JSON signature of the last-rendered embed (sans timestamp) so we can
+// skip no-op edits. When the date rolls over, everything clears for a fresh @mention post.
 
 function loadState() {
   try {
     if (existsSync(STATE_FILE)) {
       const raw = JSON.parse(readFileSync(STATE_FILE, "utf8"));
-      // Current format: { date, messages }
-      if (raw.messages && typeof raw.messages === "object") return raw;
+      if (raw.messages && typeof raw.messages === "object") {
+        return { date: raw.date ?? null, messages: raw.messages, content: raw.content ?? {} };
+      }
       // Legacy format: { "2026-06-12": { memberId: msgId, ... }, ... }
       const dates = Object.keys(raw).filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k)).sort();
       if (dates.length > 0) {
         const latest = raw[dates[dates.length - 1]];
         console.log("Migrating bot state from legacy date-keyed format →", latest);
-        return { date: dates[dates.length - 1], messages: latest };
+        return { date: dates[dates.length - 1], messages: latest, content: {} };
       }
     }
   } catch (e) {
     console.error("state load failed:", e.message);
   }
-  return { date: null, messages: {} };
+  return { date: null, messages: {}, content: {} };
 }
 
 function saveState(state) {
@@ -41,6 +45,29 @@ function saveState(state) {
     writeFileSync(STATE_FILE, JSON.stringify(state, null, 2), "utf8");
   } catch (e) {
     console.error("state save failed:", e.message);
+  }
+}
+
+// Current wall-clock parts in a given IANA timezone, independent of the container's TZ.
+function zonedNow(timeZone) {
+  try {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone,
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+    }).formatToParts(new Date());
+    let hh = parts.find((p) => p.type === "hour")?.value ?? "00";
+    const mm = parts.find((p) => p.type === "minute")?.value ?? "00";
+    if (hh === "24") hh = "00"; // some ICU builds emit 24 at midnight
+    return { hour: parseInt(hh, 10), hh, mm };
+  } catch {
+    const d = new Date();
+    return {
+      hour: d.getHours(),
+      hh: String(d.getHours()).padStart(2, "0"),
+      mm: String(d.getMinutes()).padStart(2, "0"),
+    };
   }
 }
 
@@ -87,64 +114,53 @@ function colorInt(hex) {
   return parseInt(hex.replace("#", ""), 16);
 }
 
-function buildEmbed(member, dateLabel, now) {
-  // Today's events
+function eventLines(events) {
+  return events.map((e) => {
+    const timeStr = e.allDay ? "All day" : e.time;
+    const rec = e.isRecurring ? " ↻" : "";
+    const both = e.isBoth ? " 👥" : "";
+    return `\`${timeStr}\`  ${e.title}${rec}${both}`;
+  });
+}
+
+// The timestamp-free part of the embed — used both to render and to detect changes.
+function buildEmbedContent(member, dateLabel) {
   let eventsValue;
   if (member.events.length === 0) {
     eventsValue = "Nothing scheduled today ✨";
   } else {
-    const lines = member.events.map((e) => {
-      const timeStr = e.allDay ? "All day" : e.time;
-      const rec = e.isRecurring ? " ↻" : "";
-      const both = e.isBoth ? " 👥" : "";
-      return `\`${timeStr}\`  ${e.title}${rec}${both}`;
-    });
-    eventsValue = lines.slice(0, 20).join("\n");
+    eventsValue = eventLines(member.events).slice(0, 20).join("\n");
     if (member.events.length > 20) eventsValue += `\n*… and ${member.events.length - 20} more*`;
     if (eventsValue.length > 1020) eventsValue = eventsValue.slice(0, 1017) + "…";
   }
 
   const fields = [{ name: "📅  Today's events", value: eventsValue }];
 
-  // Tomorrow's events (only if there are any)
   if (Array.isArray(member.tomorrow) && member.tomorrow.length > 0) {
-    const lines = member.tomorrow.map((e) => {
-      const timeStr = e.allDay ? "All day" : e.time;
-      const rec = e.isRecurring ? " ↻" : "";
-      const both = e.isBoth ? " 👥" : "";
-      return `\`${timeStr}\`  ${e.title}${rec}${both}`;
-    });
-    let tomorrowValue = lines.slice(0, 10).join("\n");
+    let tomorrowValue = eventLines(member.tomorrow).slice(0, 10).join("\n");
     if (member.tomorrow.length > 10) tomorrowValue += `\n*… and ${member.tomorrow.length - 10} more*`;
     if (tomorrowValue.length > 1020) tomorrowValue = tomorrowValue.slice(0, 1017) + "…";
     fields.push({ name: "📆  Tomorrow", value: tomorrowValue });
   }
 
-  // Shopping (only if there are open items)
   if (member.shopping.length > 0) {
     const lines = member.shopping.slice(0, 12).map(
       (s) => `• ${s.name}${s.qty ? ` *(${s.qty})*` : ""}`
     );
     if (member.shopping.length > 12) lines.push(`*… and ${member.shopping.length - 12} more*`);
-    fields.push({
-      name: `🛒  Shopping  ·  ${member.shopping.length} open`,
-      value: lines.join("\n"),
-    });
+    fields.push({ name: `🛒  Shopping  ·  ${member.shopping.length} open`, value: lines.join("\n") });
   }
-
-  const hh = String(now.getHours()).padStart(2, "0");
-  const mm = String(now.getMinutes()).padStart(2, "0");
 
   return {
     title: `${member.displayName}'s day  ·  ${dateLabel}`,
     color: colorInt(member.colorHex),
     fields,
-    footer: { text: `${APP_PUBLIC_URL} · Updated ${hh}:${mm}` },
   };
 }
 
 // ── Core send/update logic ────────────────────────────────────────────────────
-// One persistent message per channel per day — @mentions on first post, silent edits after.
+// One persistent message per channel per day — @mentions on first post, silent edits after,
+// and edits only fire when the rendered content has actually changed.
 
 async function sendOrUpdate({ force = false, suppressMention = false } = {}) {
   if (!BOT_TOKEN) { console.error("DISCORD_BOT_TOKEN not set — skipping"); return; }
@@ -158,28 +174,31 @@ async function sendOrUpdate({ force = false, suppressMention = false } = {}) {
     return;
   }
 
+  const tz = digest.timezone || FALLBACK_TZ;
   const digestHour = typeof digest.digestHour === "number" ? digest.digestHour : 6;
-  const now = new Date();
-  const currentHour = now.getHours();
+  const { hour: currentHour, hh, mm } = zonedNow(tz);
 
-  // Outside active window — before the configured digest hour or after 11pm
+  // Outside active window — before the configured digest hour or after 11pm (household-local)
   if (!force && (currentHour < digestHour || currentHour >= 23)) return;
 
   const state = loadState();
   if (!state.messages) state.messages = {};
+  if (!state.content) state.content = {};
 
-  // New calendar day → clear message IDs so today's posts include a fresh @mention
+  // New calendar day → clear so today's posts include a fresh @mention
   const todayStr = digest.date;
   if (state.date !== todayStr) {
-    console.log(`New day (${state.date} → ${todayStr}) — clearing message IDs for fresh @mention posts`);
+    console.log(`New day (${state.date} → ${todayStr}) — clearing state for fresh @mention posts`);
     state.messages = {};
+    state.content = {};
     state.date = todayStr;
   }
 
-  const dateLabel = now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+  const dateLabel = new Date().toLocaleDateString([], {
+    weekday: "long", month: "long", day: "numeric", timeZone: tz,
+  });
 
   for (const member of digest.members) {
-    // Prefer channel ID stored in the DB (set via Settings); fall back to env var for existing setups
     const envKey = `DISCORD_CHANNEL_${member.displayName.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`;
     const channelId = member.discordChannelId || process.env[envKey];
     if (!channelId) {
@@ -187,20 +206,27 @@ async function sendOrUpdate({ force = false, suppressMention = false } = {}) {
       continue;
     }
 
-    const embed = buildEmbed(member, dateLabel, now);
+    const content = buildEmbedContent(member, dateLabel);
+    const signature = JSON.stringify(content);
     const existingId = state.messages[member.id];
+
+    // Nothing changed since the last render — leave the message (and its timestamp) alone.
+    if (existingId && state.content[member.id] === signature) continue;
+
+    const embed = { ...content, footer: { text: `${APP_PUBLIC_URL} · Updated ${hh}:${mm}` } };
 
     if (existingId) {
       try {
         await discord("PATCH", `/channels/${channelId}/messages/${existingId}`, { embeds: [embed] });
+        state.content[member.id] = signature;
         console.log(`[${member.displayName}] updated message ${existingId}`);
       } catch (e) {
-        // Message was deleted — send a fresh one and remember the new ID
         console.error(`[${member.displayName}] edit failed (${e.message}), sending new`);
         try {
           const mention = (!suppressMention && member.discordId) ? `<@${member.discordId}>` : undefined;
           const msg = await discord("POST", `/channels/${channelId}/messages`, { content: mention, embeds: [embed] });
           state.messages[member.id] = msg.id;
+          state.content[member.id] = signature;
           console.log(`[${member.displayName}] sent replacement message ${msg.id}`);
         } catch (e2) {
           console.error(`[${member.displayName}] send also failed: ${e2.message}`);
@@ -211,6 +237,7 @@ async function sendOrUpdate({ force = false, suppressMention = false } = {}) {
         const mention = (!suppressMention && member.discordId) ? `<@${member.discordId}>` : undefined;
         const msg = await discord("POST", `/channels/${channelId}/messages`, { content: mention, embeds: [embed] });
         state.messages[member.id] = msg.id;
+        state.content[member.id] = signature;
         console.log(`[${member.displayName}] sent initial message ${msg.id}`);
       } catch (e) {
         console.error(`[${member.displayName}] send failed: ${e.message}`);
@@ -222,7 +249,8 @@ async function sendOrUpdate({ force = false, suppressMention = false } = {}) {
 }
 
 // ── Startup cleanup ───────────────────────────────────────────────────────────
-// On restart: delete any previously-posted embeds, then post fresh ones.
+// On restart: wipe every bot message in each digest channel, then post fresh ones.
+// (These are dedicated digest channels, so clearing all bot messages is intended.)
 
 async function startup() {
   if (!BOT_TOKEN || !API_SECRET) {
@@ -238,10 +266,11 @@ async function startup() {
     return;
   }
 
-  // Check window FIRST — overnight/early restarts do nothing.
-  // @mentions only come from the 6am cron, never from a restart.
+  // Check window FIRST (household-local) — overnight/early restarts do nothing.
+  // @mentions only come from the digest-hour cron, never from a restart.
+  const tz = digest.timezone || FALLBACK_TZ;
   const digestHour = typeof digest.digestHour === "number" ? digest.digestHour : 6;
-  const currentHour = new Date().getHours();
+  const { hour: currentHour } = zonedNow(tz);
   const inWindow = currentHour >= digestHour && currentHour < 23;
 
   if (!inWindow) {
@@ -249,7 +278,6 @@ async function startup() {
     return;
   }
 
-  // In window: scan each channel for old bot messages, then re-post silently (no @mention)
   let botUserId;
   try {
     botUserId = await getBotUserId();
@@ -266,44 +294,39 @@ async function startup() {
     const channelId = member.discordChannelId || process.env[envKey];
     if (!channelId) continue;
 
-    // Fetch up to 50 recent messages and delete any from the bot.
-    // This catches orphaned embeds even when the state file has been cleared.
+    // Fetch up to 100 recent messages (Discord's max per call) and delete any from the bot.
+    // Catches orphaned embeds even when the state file has been cleared.
     try {
-      const messages = await discord("GET", `/channels/${channelId}/messages?limit=50`);
+      const messages = await discord("GET", `/channels/${channelId}/messages?limit=100`);
       if (Array.isArray(messages)) {
         for (const msg of messages) {
           if (msg.author?.id === botUserId) {
             try {
               await discord("DELETE", `/channels/${channelId}/messages/${msg.id}`);
-              console.log(`Startup: deleted bot message ${msg.id} for ${member.displayName}`);
               deleted++;
             } catch (e) {
-              if (!e.message.includes("404")) {
-                console.error(`Startup: delete failed (${msg.id}): ${e.message}`);
-              }
+              if (!e.message.includes("404")) console.error(`Startup: delete failed (${msg.id}): ${e.message}`);
             }
           }
         }
       }
     } catch (e) {
-      // Fall back to deleting just the stored message ID if channel scan fails
+      // Fall back to the stored message ID if the channel scan fails (e.g. missing perms)
       console.error(`Startup: channel scan failed for ${member.displayName}: ${e.message}`);
       const oldMsgId = (state.messages ?? {})[member.id];
       if (oldMsgId) {
         try {
           await discord("DELETE", `/channels/${channelId}/messages/${oldMsgId}`);
-          console.log(`Startup: deleted stored embed ${oldMsgId} for ${member.displayName}`);
           deleted++;
         } catch (e2) {
-          if (!e2.message.includes("404")) {
-            console.error(`Startup: fallback delete failed: ${e2.message}`);
-          }
+          if (!e2.message.includes("404")) console.error(`Startup: fallback delete failed: ${e2.message}`);
         }
       }
     }
   }
 
   state.messages = {};
+  state.content = {};
   state.date = null;
   saveState(state);
   console.log(`Startup: cleared ${deleted} old embed(s) — posting fresh (no @mention)`);
@@ -313,9 +336,8 @@ async function startup() {
 
 // ── Scheduling ────────────────────────────────────────────────────────────────
 
-// Every minute — sendOrUpdate checks the active window
+// Every minute — sendOrUpdate checks the active window and only edits on real changes.
 cron.schedule("* * * * *", () => {
-  console.log(`${new Date().toLocaleTimeString()} — tick`);
   sendOrUpdate().catch(console.error);
 });
 

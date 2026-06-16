@@ -149,6 +149,7 @@ export async function GET(req: NextRequest) {
     date: todayStr,
     generatedAt: now.toISOString(),
     digestHour: config.digestHour,
+    timezone: config.timezone,
     members: result,
   });
 }

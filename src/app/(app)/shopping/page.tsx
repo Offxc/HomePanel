@@ -1,7 +1,6 @@
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { getHousehold } from "@/lib/household";
-import { coerceColorKey } from "@/lib/colors";
 import { Card, CardTitle } from "@/components/card";
 import { ShoppingList } from "@/components/shopping-list";
 import { clearDone } from "./actions";
@@ -30,7 +29,7 @@ export default async function ShoppingPage() {
       qty: i.qty ?? null,
       done: i.done,
       ownerName: assignee ? assignee.displayName : "Both",
-      ownerColorKey: assignee ? assignee.colorKey : coerceColorKey("gray", "gray"),
+      ownerColorKey: assignee ? assignee.colorKey : "white",
     };
   });
 

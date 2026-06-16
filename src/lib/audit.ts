@@ -4,10 +4,12 @@ type Action =
   | "signin.success"
   | "signin.denied"
   | "signout"
-  | "todo.delete"
   | "event.delete"
   | "shop.delete"
   | "note.delete"
+  | "tag.delete"
+  | "kanban.column.delete"
+  | "kanban.card.delete"
   | "ratelimit.hit";
 
 export async function audit(action: Action, opts: { actorId?: string | null; detail?: string } = {}) {

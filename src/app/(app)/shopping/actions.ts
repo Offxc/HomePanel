@@ -61,8 +61,8 @@ export async function deleteShopItem(formData: FormData) {
   const user = await requireSession();
   ensureRate(user.id);
   const { id } = IdSchema.parse({ id: formData.get("id") });
-  await db.shoppingItem.delete({ where: { id } });
-  await audit("shop.delete", { actorId: user.id, detail: `id=${id}` });
+  const { count } = await db.shoppingItem.deleteMany({ where: { id } });
+  if (count > 0) await audit("shop.delete", { actorId: user.id, detail: `id=${id}` });
   revalidatePath("/shopping");
 }
 

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -24,12 +25,14 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html lang="en">
       <body>
         {children}
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');`,
           }}

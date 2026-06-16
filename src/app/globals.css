@@ -13,6 +13,9 @@
 .toast-pill {
   animation: toast-in 0.15s ease-out forwards;
 }
+.toast-pill-out {
+  animation: toast-out 0.2s ease-in forwards;
+}
 
 :root {
   /* Color palette — owner pills + tags */

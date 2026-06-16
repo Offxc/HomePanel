@@ -60,7 +60,7 @@ export async function deleteNote(formData: FormData) {
   const user = await requireSession();
   ensureRate(user.id);
   const { id } = IdSchema.parse({ id: formData.get("id") });
-  await db.note.delete({ where: { id } });
-  await audit("note.delete", { actorId: user.id, detail: `id=${id}` });
+  const { count } = await db.note.deleteMany({ where: { id } });
+  if (count > 0) await audit("note.delete", { actorId: user.id, detail: `id=${id}` });
   revalidatePath("/notes");
 }

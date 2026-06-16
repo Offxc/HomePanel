@@ -43,7 +43,7 @@ export function ShoppingList({
       qty,
       done: false,
       ownerName: assignee?.displayName ?? "Both",
-      ownerColorKey: assignee?.colorKey ?? "gray",
+      ownerColorKey: assignee?.colorKey ?? "white",
     });
 
     formRef.current?.reset();

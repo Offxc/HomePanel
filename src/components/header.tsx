@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { signOut } from "@/auth";
 import { getHousehold } from "@/lib/household";
 import { getWeather } from "@/lib/weather";
@@ -5,6 +6,7 @@ import { getHouseholdConfig } from "@/lib/config";
 import { formatLong } from "@/lib/dates";
 import { OwnerPill } from "@/components/owner-pill";
 import { WeatherWidget } from "@/components/weather-widget";
+import { BrandMark, SettingsIcon, SignOutIcon } from "@/components/icons";
 
 async function doSignOut() {
   "use server";
@@ -21,7 +23,7 @@ export async function AppHeader() {
     <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-xl border bg-[var(--color-app-surface)] mb-3">
       <div className="flex items-center gap-3 min-w-0">
         <div className="flex items-center gap-2 font-medium text-[15px] flex-shrink-0">
-          <span aria-hidden className="brand-mark text-base">▦</span>
+          <BrandMark size={18} />
           <span className="brand-mark">HomePanel</span>
         </div>
         <div className="flex items-center gap-2 border-l pl-3 ml-1 min-w-0">
@@ -33,14 +35,22 @@ export async function AppHeader() {
         {members.map((m) => (
           <OwnerPill key={m.id} name={m.displayName} colorKey={m.colorKey} />
         ))}
+        <Link
+          href="/settings"
+          aria-label="Settings"
+          title="Settings"
+          className="ml-1 w-7 h-7 inline-flex items-center justify-center rounded-md border text-[var(--color-app-muted)] hover:text-[var(--color-app-text)] hover:bg-[var(--color-app-bg)] transition-colors"
+        >
+          <SettingsIcon className="w-4 h-4" />
+        </Link>
         <form action={doSignOut}>
           <button
             type="submit"
             aria-label="Sign out"
             title="Sign out"
-            className="ml-1 w-7 h-7 inline-flex items-center justify-center rounded-md border text-[var(--color-app-muted)] hover:text-[var(--color-app-text)] hover:bg-[var(--color-app-bg)] transition-colors"
+            className="w-7 h-7 inline-flex items-center justify-center rounded-md border text-[var(--color-app-muted)] hover:text-[var(--color-app-text)] hover:bg-[var(--color-app-bg)] transition-colors"
           >
-            ⎋
+            <SignOutIcon className="w-4 h-4" />
           </button>
         </form>
       </div>

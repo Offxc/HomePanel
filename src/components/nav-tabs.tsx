@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { NAV_ICONS, type NavIconName } from "@/components/icons";
 
-export type Tab = { href: string; label: string; icon: string };
+export type Tab = { href: string; label: string; icon: NavIconName };
 
 export function NavTabs({ tabs }: { tabs: Tab[] }) {
   const pathname = usePathname();
@@ -11,6 +12,7 @@ export function NavTabs({ tabs }: { tabs: Tab[] }) {
     <nav className="flex gap-1 p-1 rounded-xl bg-[var(--color-app-bg)] border mb-3">
       {tabs.map((t) => {
         const active = pathname === t.href || pathname.startsWith(t.href + "/");
+        const Icon = NAV_ICONS[t.icon];
         return (
           <Link
             key={t.href}
@@ -21,7 +23,7 @@ export function NavTabs({ tabs }: { tabs: Tab[] }) {
                 : "text-[var(--color-app-muted)] hover:text-[var(--color-app-text)] hover:bg-[var(--color-app-surface)]/40"
             }`}
           >
-            <span aria-hidden className={`text-base sm:text-sm ${active ? "" : "opacity-70"}`}>{t.icon}</span>
+            <Icon className={`w-[18px] h-[18px] sm:w-4 sm:h-4 ${active ? "" : "opacity-70"}`} />
             <span className="leading-none">{t.label}</span>
             {active && (
               <span

@@ -7,6 +7,7 @@ import { requireSession } from "@/lib/session";
 import { rateLimit } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
 import { COLOR_KEYS } from "@/lib/colors";
+import { createTag } from "@/lib/tags";
 import { invalidateWeatherCache } from "@/lib/weather";
 
 const ProfileSchema = z.object({
@@ -98,19 +99,10 @@ export async function addTag(formData: FormData) {
     name: formData.get("name"),
     colorKey: formData.get("colorKey"),
   });
-  await createTagRecord(user.id, parsed.name, parsed.colorKey);
+  await createTag(parsed.name, parsed.colorKey);
   revalidatePath("/settings");
   revalidatePath("/calendar");
   revalidatePath("/today");
-}
-
-async function createTagRecord(actorId: string, name: string, colorKey: string) {
-  void actorId;
-  const max = await db.tag.findFirst({ orderBy: { order: "desc" }, select: { order: true } });
-  return db.tag.create({
-    data: { name, colorKey, order: (max?.order ?? 0) + 1 },
-    select: { id: true, name: true, colorKey: true },
-  });
 }
 
 export async function updateTag(formData: FormData) {
@@ -134,7 +126,8 @@ export async function deleteTag(formData: FormData) {
   const user = await requireSession();
   ensureRate(user.id);
   const { id } = IdSchema.parse({ id: formData.get("id") });
-  await db.tag.delete({ where: { id } });
+  const { count } = await db.tag.deleteMany({ where: { id } });
+  if (count > 0) await audit("tag.delete", { actorId: user.id, detail: `id=${id}` });
   revalidatePath("/settings");
   revalidatePath("/calendar");
   revalidatePath("/today");

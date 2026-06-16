@@ -71,9 +71,9 @@ export async function deleteColumn(formData: FormData) {
   const u = await requireSession();
   ensureRate(u.id);
   const { id } = IdSchema.parse({ id: formData.get("id") });
-  // Cascade removes cards via the schema FK rule.
-  await db.kanbanColumn.delete({ where: { id } });
-  await audit("note.delete", { actorId: u.id, detail: `kanban.column=${id}` });
+  // Cascade removes cards via the schema FK rule. deleteMany keeps it idempotent.
+  const { count } = await db.kanbanColumn.deleteMany({ where: { id } });
+  if (count > 0) await audit("kanban.column.delete", { actorId: u.id, detail: `id=${id}` });
   revalidatePath("/kanban");
 }
 
@@ -110,7 +110,8 @@ export async function deleteCard(formData: FormData) {
   const u = await requireSession();
   ensureRate(u.id);
   const { id } = IdSchema.parse({ id: formData.get("id") });
-  await db.kanbanCard.delete({ where: { id } });
+  const { count } = await db.kanbanCard.deleteMany({ where: { id } });
+  if (count > 0) await audit("kanban.card.delete", { actorId: u.id, detail: `id=${id}` });
   revalidatePath("/kanban");
 }
 

@@ -1,4 +1,4 @@
-// Open-Meteo current weather. No API key, 15-min server-side cache keyed by location.
+// Open-Meteo current weather. No API key, 3-min server-side cache keyed by location.
 
 export type Weather = {
   tempC: number;
