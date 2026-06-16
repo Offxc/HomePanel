@@ -24,6 +24,7 @@
   --c-green-bg:  #EAF3DE;  --c-green-text:  #27500A;  --c-green-dot:  #639922;
   --c-red-bg:    #FCEBEB;  --c-red-text:    #791F1F;  --c-red-dot:    #E24B4A;
   --c-gray-bg:   #F1EFE8;  --c-gray-text:   #444441;  --c-gray-dot:   #888780;
+  --c-white-bg:  #FFFFFF;              --c-white-text:  #1A1A18;  --c-white-dot:  #9A9A94;
 
   /* Legacy aliases kept for tailwind theme tokens */
   --color-off-bg: var(--c-teal-bg);
@@ -63,6 +64,7 @@
     --c-green-bg:  rgba(99,153,34,0.20);    --c-green-text:  #C0DD97;  --c-green-dot:  #97C459;
     --c-red-bg:    rgba(226,75,74,0.20);    --c-red-text:    #F7C1C1;  --c-red-dot:    #F09595;
     --c-gray-bg:   rgba(136,135,128,0.20);  --c-gray-text:   #D3D1C7;  --c-gray-dot:   #B4B2A9;
+    --c-white-bg:  rgba(255,255,255,0.16); --c-white-text:  #FFFFFF;  --c-white-dot:  rgba(255,255,255,0.60);
 
     --color-app-bg: #111110;
     --color-app-surface: #1B1B19;

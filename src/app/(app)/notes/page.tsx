@@ -34,7 +34,7 @@ export default async function NotesPage() {
     const authorColorKey = coerceColorKey(authorMember?.colorKey ?? n.author.colorKey, "gray") as ColorKey;
     const assigneeMember = n.assigneeId ? memberById.get(n.assigneeId) : null;
     const assigneeName = assigneeMember ? assigneeMember.displayName : "Both";
-    const assigneeColorKey = coerceColorKey(assigneeMember?.colorKey ?? "gray", "gray") as ColorKey;
+    const assigneeColorKey = coerceColorKey(assigneeMember?.colorKey ?? "white", "white") as ColorKey;
     return {
       id: n.id,
       title: n.title,

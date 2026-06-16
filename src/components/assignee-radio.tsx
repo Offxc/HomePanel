@@ -15,7 +15,7 @@ export function AssigneeRadio({
 }) {
   const options: { value: string; label: string; colorKey: string }[] = [
     ...members.map((m) => ({ value: m.id, label: m.displayName, colorKey: m.colorKey })),
-    { value: "", label: "Both", colorKey: "gray" },
+    { value: "", label: "Both", colorKey: "white" },
   ];
   return (
     <fieldset className="inline-flex items-center gap-2">

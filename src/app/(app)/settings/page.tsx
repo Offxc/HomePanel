@@ -46,7 +46,7 @@ export default async function SettingsPage() {
           <div className="flex items-start gap-3">
             <label className="text-xs text-[var(--color-app-muted)] w-24 flex-shrink-0 pt-1.5">Pill colour</label>
             <div className="flex flex-wrap gap-2 flex-1">
-              {COLOR_KEYS.map((c) => (
+              {COLOR_KEYS.filter((c) => c !== "white").map((c) => (
                 <label key={c} className="cursor-pointer relative">
                   <input
                     type="radio"
@@ -231,7 +231,7 @@ export default async function SettingsPage() {
                   defaultValue={t.colorKey}
                   className="rounded-md border px-2 py-1.5 text-sm bg-[var(--color-app-surface)]"
                 >
-                  {COLOR_KEYS.map((c) => (
+                  {COLOR_KEYS.filter((c) => c !== "white").map((c) => (
                     <option key={c} value={c}>{COLOR_LABELS[c]}</option>
                   ))}
                 </select>
@@ -269,7 +269,7 @@ export default async function SettingsPage() {
             defaultValue="purple"
             className="rounded-md border px-2 py-2 text-sm bg-transparent"
           >
-            {COLOR_KEYS.map((c) => (
+            {COLOR_KEYS.filter((c) => c !== "white").map((c) => (
               <option key={c} value={c}>{COLOR_LABELS[c]}</option>
             ))}
           </select>

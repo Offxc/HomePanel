@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getHousehold } from "@/lib/household";
 import { expandRecurrence } from "@/lib/recur";
-import { startOfDay, endOfDay, formatTime } from "@/lib/dates";
+import { startOfDay, endOfDay, addDays, formatTime } from "@/lib/dates";
 import { getHouseholdConfig } from "@/lib/config";
 
 const COLOR_HEX: Record<string, string> = {
@@ -25,8 +25,10 @@ export async function GET(req: NextRequest) {
   const now = new Date();
   const dayStart = startOfDay(now);
   const dayEnd = endOfDay(now);
+  const tomorrowStart = startOfDay(addDays(now, 1));
+  const tomorrowEnd = endOfDay(addDays(now, 1));
 
-  const [members, rawEvents, openShop, userRows, discordAccounts] = await Promise.all([
+  const [members, rawEvents, rawTomorrowEvents, openShop, userRows, discordAccounts] = await Promise.all([
     getHousehold(),
     db.event.findMany({
       where: {
@@ -36,6 +38,19 @@ export async function GET(req: NextRequest) {
             recurFreq: { not: null },
             startsAt: { lte: dayEnd },
             OR: [{ recurUntil: null }, { recurUntil: { gte: dayStart } }],
+          },
+        ],
+      },
+      orderBy: { startsAt: "asc" },
+    }),
+    db.event.findMany({
+      where: {
+        OR: [
+          { recurFreq: null, startsAt: { gte: tomorrowStart, lte: tomorrowEnd } },
+          {
+            recurFreq: { not: null },
+            startsAt: { lte: tomorrowEnd },
+            OR: [{ recurUntil: null }, { recurUntil: { gte: tomorrowStart } }],
           },
         ],
       },
@@ -88,6 +103,27 @@ export async function GET(req: NextRequest) {
     return 0;
   });
 
+  const tomorrowInstances: Instance[] = [];
+  for (const ev of rawTomorrowEvents) {
+    const dates = expandRecurrence(ev, tomorrowStart, tomorrowEnd);
+    for (const d of dates) {
+      tomorrowInstances.push({
+        title: ev.title,
+        allDay: ev.allDay,
+        time: ev.allDay ? null : formatTime(d),
+        isRecurring: !!ev.recurFreq,
+        isBoth: ev.assigneeId === null,
+        assigneeId: ev.assigneeId,
+      });
+    }
+  }
+  tomorrowInstances.sort((a, b) => {
+    if (a.allDay && !b.allDay) return -1;
+    if (!a.allDay && b.allDay) return 1;
+    if (a.time && b.time) return a.time.localeCompare(b.time);
+    return 0;
+  });
+
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
   const result = members.map((m) => ({
@@ -97,6 +133,9 @@ export async function GET(req: NextRequest) {
     discordId: discordIdByUser.get(m.id) ?? null,
     discordChannelId: channelIdByUser.get(m.id) ?? null,
     events: allInstances
+      .filter((i) => i.assigneeId === m.id || i.assigneeId === null)
+      .map(({ assigneeId: _id, ...rest }) => rest),
+    tomorrow: tomorrowInstances
       .filter((i) => i.assigneeId === m.id || i.assigneeId === null)
       .map(({ assigneeId: _id, ...rest }) => rest),
     shopping: openShop

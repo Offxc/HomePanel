@@ -1,7 +1,8 @@
 // Preset color palette used for user identity pills and tags.
 // All colors are exposed as CSS vars `--c-<key>-{bg,text,dot}` in globals.css.
 
-export const COLOR_KEYS = ["teal", "pink", "purple", "amber", "blue", "green", "red", "gray"] as const;
+// "white" is reserved for the BOTH pseudo-member — excluded from the user color picker.
+export const COLOR_KEYS = ["teal", "pink", "purple", "amber", "blue", "green", "red", "gray", "white"] as const;
 export type ColorKey = (typeof COLOR_KEYS)[number];
 
 export const COLOR_LABELS: Record<ColorKey, string> = {
@@ -13,6 +14,7 @@ export const COLOR_LABELS: Record<ColorKey, string> = {
   green: "Green",
   red: "Red",
   gray: "Gray",
+  white: "White",
 };
 
 export function isColorKey(v: unknown): v is ColorKey {

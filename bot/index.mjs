@@ -72,7 +72,13 @@ async function discord(method, path, body) {
     const text = await r.text().catch(() => "");
     throw new Error(`Discord ${method} ${path} → ${r.status}: ${text}`);
   }
+  if (r.status === 204) return null;
   return r.json();
+}
+
+async function getBotUserId() {
+  const me = await discord("GET", "/users/@me");
+  return me.id;
 }
 
 // ── Embed builder ─────────────────────────────────────────────────────────────
@@ -81,8 +87,8 @@ function colorInt(hex) {
   return parseInt(hex.replace("#", ""), 16);
 }
 
-function buildEmbed(member, dateLabel) {
-  // Events
+function buildEmbed(member, dateLabel, now) {
+  // Today's events
   let eventsValue;
   if (member.events.length === 0) {
     eventsValue = "Nothing scheduled today ✨";
@@ -100,6 +106,20 @@ function buildEmbed(member, dateLabel) {
 
   const fields = [{ name: "📅  Today's events", value: eventsValue }];
 
+  // Tomorrow's events (only if there are any)
+  if (Array.isArray(member.tomorrow) && member.tomorrow.length > 0) {
+    const lines = member.tomorrow.map((e) => {
+      const timeStr = e.allDay ? "All day" : e.time;
+      const rec = e.isRecurring ? " ↻" : "";
+      const both = e.isBoth ? " 👥" : "";
+      return `\`${timeStr}\`  ${e.title}${rec}${both}`;
+    });
+    let tomorrowValue = lines.slice(0, 10).join("\n");
+    if (member.tomorrow.length > 10) tomorrowValue += `\n*… and ${member.tomorrow.length - 10} more*`;
+    if (tomorrowValue.length > 1020) tomorrowValue = tomorrowValue.slice(0, 1017) + "…";
+    fields.push({ name: "📆  Tomorrow", value: tomorrowValue });
+  }
+
   // Shopping (only if there are open items)
   if (member.shopping.length > 0) {
     const lines = member.shopping.slice(0, 12).map(
@@ -112,11 +132,14 @@ function buildEmbed(member, dateLabel) {
     });
   }
 
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+
   return {
     title: `${member.displayName}'s day  ·  ${dateLabel}`,
     color: colorInt(member.colorHex),
     fields,
-    footer: { text: APP_PUBLIC_URL },
+    footer: { text: `${APP_PUBLIC_URL} · Updated ${hh}:${mm}` },
   };
 }
 
@@ -164,7 +187,7 @@ async function sendOrUpdate({ force = false, suppressMention = false } = {}) {
       continue;
     }
 
-    const embed = buildEmbed(member, dateLabel);
+    const embed = buildEmbed(member, dateLabel, now);
     const existingId = state.messages[member.id];
 
     if (existingId) {
@@ -226,22 +249,55 @@ async function startup() {
     return;
   }
 
-  // In window: delete stale embeds, then re-post silently (no @mention)
-  const state = loadState();
+  // In window: scan each channel for old bot messages, then re-post silently (no @mention)
+  let botUserId;
+  try {
+    botUserId = await getBotUserId();
+  } catch (e) {
+    console.error("Startup: could not get bot user ID:", e.message);
+    return;
+  }
+
   let deleted = 0;
+  const state = loadState();
 
   for (const member of digest.members) {
     const envKey = `DISCORD_CHANNEL_${member.displayName.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`;
     const channelId = member.discordChannelId || process.env[envKey];
-    const oldMsgId = (state.messages ?? {})[member.id];
-    if (channelId && oldMsgId) {
-      try {
-        await discord("DELETE", `/channels/${channelId}/messages/${oldMsgId}`);
-        console.log(`Startup: deleted old embed for ${member.displayName}`);
-        deleted++;
-      } catch (e) {
-        if (!e.message.includes("404")) {
-          console.error(`Startup: delete failed for ${member.displayName}: ${e.message}`);
+    if (!channelId) continue;
+
+    // Fetch up to 50 recent messages and delete any from the bot.
+    // This catches orphaned embeds even when the state file has been cleared.
+    try {
+      const messages = await discord("GET", `/channels/${channelId}/messages?limit=50`);
+      if (Array.isArray(messages)) {
+        for (const msg of messages) {
+          if (msg.author?.id === botUserId) {
+            try {
+              await discord("DELETE", `/channels/${channelId}/messages/${msg.id}`);
+              console.log(`Startup: deleted bot message ${msg.id} for ${member.displayName}`);
+              deleted++;
+            } catch (e) {
+              if (!e.message.includes("404")) {
+                console.error(`Startup: delete failed (${msg.id}): ${e.message}`);
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      // Fall back to deleting just the stored message ID if channel scan fails
+      console.error(`Startup: channel scan failed for ${member.displayName}: ${e.message}`);
+      const oldMsgId = (state.messages ?? {})[member.id];
+      if (oldMsgId) {
+        try {
+          await discord("DELETE", `/channels/${channelId}/messages/${oldMsgId}`);
+          console.log(`Startup: deleted stored embed ${oldMsgId} for ${member.displayName}`);
+          deleted++;
+        } catch (e2) {
+          if (!e2.message.includes("404")) {
+            console.error(`Startup: fallback delete failed: ${e2.message}`);
+          }
         }
       }
     }

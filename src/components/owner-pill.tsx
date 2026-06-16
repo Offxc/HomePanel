@@ -1,7 +1,7 @@
 import { coerceColorKey, type ColorKey } from "@/lib/colors";
 
 // Single source of truth for the colored identity pill.
-// Pass an explicit name + colorKey. "Both" is just `name="Both" colorKey="gray"`.
+// Pass an explicit name + colorKey. "Both" uses colorKey="white".
 export function OwnerPill({
   name,
   colorKey,

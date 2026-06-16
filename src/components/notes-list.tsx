@@ -48,7 +48,7 @@ export function NotesList({
       authorName: userDisplayName,
       authorColorKey: userColorKey,
       assigneeName: assignee?.displayName ?? "Both",
-      assigneeColorKey: (assignee?.colorKey ?? "gray") as ColorKey,
+      assigneeColorKey: (assignee?.colorKey ?? "white") as ColorKey,
       pending: true,
     });
 

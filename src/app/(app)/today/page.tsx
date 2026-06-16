@@ -33,7 +33,7 @@ function assigneeName(e: DbEvent): string {
 }
 
 function assigneeColor(e: DbEvent): string {
-  if (!e.assignee) return "gray";
+  if (!e.assignee) return "white";
   return coerceColorKey(e.assignee.colorKey, "gray");
 }
 
@@ -48,6 +48,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
   const now = new Date();
   const dayStart = startOfDay(now);
   const dayEnd = endOfDay(now);
+  const tomorrowEnd = endOfDay(addDays(now, 1));
   const weekEnd = addDays(dayStart, 7);
 
   const rawEvents = (await db.event.findMany({
@@ -81,7 +82,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
   instances.sort((a, b) => a.at.getTime() - b.at.getTime());
 
   const todaysItems = instances.filter((i) => i.at <= dayEnd);
-  const upcomingItems = instances.filter((i) => i.at > dayEnd);
+  const tomorrowItems = instances.filter((i) => i.at > dayEnd && i.at <= tomorrowEnd);
+  const laterItems = instances.filter((i) => i.at > tomorrowEnd);
 
   // Group today's events by first tag (each event appears once)
   type TagInfo = { id: string; name: string; colorKey: string };
@@ -104,7 +106,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
   ]);
 
   const tagGroups = new Map<string, { tag: TagInfo | null; items: Inst[] }>();
-  for (const i of upcomingItems) {
+  for (const i of laterItems) {
     if (i.event.tags.length === 0) {
       const k = "__untagged__";
       const g = tagGroups.get(k) ?? { tag: null, items: [] };
@@ -199,16 +201,41 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         </Card>
       </div>
 
+      {tomorrowItems.length > 0 && (
+        <Card hover>
+          <CardTitle count={tomorrowItems.length}>Tomorrow</CardTitle>
+          <ul>
+            {tomorrowItems.map((i, idx) => (
+              <li
+                key={`tmr-${i.event.id}-${i.at.getTime()}-${idx}`}
+                className="flex items-center gap-3 py-2.5 border-t first:border-t-0"
+              >
+                <div className="time-badge px-2.5 py-1.5 rounded-md text-sm font-medium tabular-nums min-w-[58px] text-center">
+                  {i.event.allDay ? "All day" : formatTime(i.at).slice(0, 5)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium leading-tight">{i.event.title}</div>
+                  {i.event.location && (
+                    <div className="text-xs text-[var(--color-app-muted)] mt-0.5">{i.event.location}</div>
+                  )}
+                </div>
+                <OwnerPill name={assigneeName(i.event)} colorKey={assigneeColor(i.event)} />
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
       {Array.from(tagGroups.entries()).map(([key, group]) => (
         <Card key={key} hover>
           <CardTitle count={group.items.length}>
             {group.tag ? (
               <span className="inline-flex items-center gap-2">
                 <TagPill name={group.tag.name} colorKey={group.tag.colorKey} />
-                <span className="text-[var(--color-app-text)]">in the next week</span>
+                <span className="text-[var(--color-app-text)]">later this week</span>
               </span>
             ) : (
-              "Untagged · next week"
+              "Untagged · later this week"
             )}
           </CardTitle>
           <ul>

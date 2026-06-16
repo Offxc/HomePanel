@@ -34,4 +34,4 @@ export function memberById(members: HouseholdMember[], id: string | null | undef
   return members.find((m) => m.id === id) ?? null;
 }
 
-export const BOTH: HouseholdMember = { id: "__both__", displayName: "Both", colorKey: "gray", kanbanEnabled: false };
+export const BOTH: HouseholdMember = { id: "__both__", displayName: "Both", colorKey: "white", kanbanEnabled: false };

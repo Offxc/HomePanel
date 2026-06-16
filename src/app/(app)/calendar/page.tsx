@@ -54,7 +54,7 @@ function assigneeName(e: DbEvent): string {
 }
 
 function assigneeColor(e: DbEvent): string {
-  if (!e.assignee) return "gray";
+  if (!e.assignee) return "white";
   return coerceColorKey(e.assignee.colorKey, "gray");
 }
 
@@ -188,7 +188,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
                 {members.map((m) => (
                   <OwnerPill key={m.id} name={m.displayName} colorKey={m.colorKey} size="xs" />
                 ))}
-                <OwnerPill name="Both" colorKey="gray" size="xs" />
+                <OwnerPill name="Both" colorKey="white" size="xs" />
               </div>
               <Link
                 href={`/calendar?y=${prev.getFullYear()}&m=${prev.getMonth() + 1}`}
