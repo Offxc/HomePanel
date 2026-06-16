@@ -1,158 +1,216 @@
-# HomePanel
+<div align="center">
 
-A self-hosted shared household panel — calendar (with tags, recurring events, public holidays), shopping list, notes, kanban — behind a Discord-OAuth allow-list.
+# 🏠 HomePanel
 
-## Stack
+**A self-hosted dashboard for a two-person household.**
+Calendar, shopping list, notes, and a kanban board — with a daily Discord digest — all behind a private Discord allow-list.
 
-- Next.js 15 (App Router) + TypeScript
-- Auth.js v5 with Discord provider, database sessions, allow-list gate
-- Prisma + SQLite (single file, easy to back up)
-- Tailwind CSS v3
-- Caddy reverse proxy with automatic TLS
-- Discord bot (node-cron + Discord REST API) for daily digest embeds
+![Next.js 15](https://img.shields.io/badge/Next.js-15-000?logo=nextdotjs&logoColor=white)
+![Auth.js v5](https://img.shields.io/badge/Auth.js-v5-9b59b6)
+![Prisma + SQLite](https://img.shields.io/badge/Prisma-SQLite-2D3748?logo=prisma&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
+![Self-hosted](https://img.shields.io/badge/self--hosted-Docker%20%2B%20Caddy-0db7ed?logo=docker&logoColor=white)
+![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?logo=pwa&logoColor=white)
 
-All mutations go through server actions; every action calls `requireSession()` and validates input with Zod.
-
-## Security (OWASP-aware)
-
-| Risk | Mitigation |
-| --- | --- |
-| A01 Broken access control | `requireSession()` on every authed page + every server action. Discord-ID allow-list re-checked on each request. |
-| A02 Cryptographic failures | TLS terminated by Caddy with Let's Encrypt + HSTS preload. `AUTH_SECRET` is 32+ random bytes. |
-| A03 Injection | Prisma parameterized queries. React auto-escapes. Zod validates every server-action input. |
-| A04 Insecure design | Single-tenant by design. OAuth-only — no password reset flow to abuse. |
-| A05 Misconfiguration | Strict CSP, X-Frame-Options DENY, X-Content-Type-Options nosniff, Referrer-Policy same-origin, Permissions-Policy locks down camera/mic/geo. |
-| A06 Vulnerable components | `npm audit` script. Pinned Node 22 in Dockerfile. |
-| A07 Auth failures | OAuth only — no passwords. Database session strategy (revocable). Sign-out audited. Rate limit on auth endpoints in both app and Caddy. |
-| A08 Integrity failures | Lockfile committed. No CDN scripts. |
-| A09 Logging failures | `AuditLog` table records sign-in success/denied, sign-out, deletes, rate-limit hits. No tokens or PII bodies logged. |
-| A10 SSRF | Outbound fetches are Open-Meteo (weather) and Nager.Date (public holidays). Both use hard-coded base URLs; lat/lng are validated as floats and country code as exactly 2 uppercase letters before use. The internal digest API (`/api/internal/daily-digest`) is protected by a shared secret and never exposed externally. |
+</div>
 
 ---
 
-# Deploying
+## ✨ What it does
 
-👉 **First-time setup: follow [SETUP.md](SETUP.md).** It's a from-zero walkthrough for an Ubuntu Docker VM, including Discord OAuth, DNS, and `docker compose` — every step written out.
+| | Feature |
+|---|---|
+| ☀️ | **Today** — a single glance at today *and* tomorrow, plus your open shopping list. Filter by person (Combined / each member) and group by tag. |
+| 📅 | **Calendar** — month grid with recurring events, tags, public holidays, and a subtle seasonal tint. Click any day to expand. |
+| 🛒 | **Shopping** — tap a row to cross it off. Assign items to a person or to *Both*. One-tap "clear crossed-off". |
+| 📝 | **Notes** — inline-editable cards, assignable, newest first. |
+| 🗂️ | **Kanban** — optional per-user board with rename-in-place columns, color dots, and move/edit/delete cards. |
+| 🤖 | **Discord digest** — a daily embed per person with today's + tomorrow's events and shopping, quietly updated through the day. |
+| 📱 | **Installable** — ships as a PWA, so it adds to a phone home screen and runs full-screen. |
+| 🎨 | **Per-person identity** — every member has a color; *Both* shows as a clean white pill throughout. |
 
-## Quick reference (after first deploy)
+> Built for two people (Off + Bri) but the household is data-driven — names, colors, timezone, weather location, and digest hour are all editable in **Settings**.
+
+## 🧱 Stack
+
+- **Next.js 15** (App Router) + **React 19** + **TypeScript** — Server Components and Server Actions, no client API layer.
+- **Auth.js v5** — Discord OAuth, JWT sessions, gated by a Discord-ID allow-list.
+- **Prisma + SQLite** — one file, trivial to back up.
+- **Tailwind CSS v3** with a small CSS-variable palette (light + dark).
+- **Caddy** reverse proxy with automatic Let's Encrypt TLS.
+- **Discord bot** — `node-cron` + the Discord REST API, in its own container.
+
+All mutations go through **server actions**; every action calls `requireSession()`, validates input with **Zod**, and is rate-limited.
+
+## 🔒 Security (OWASP-aware)
+
+| Risk | Mitigation |
+| --- | --- |
+| **A01 Broken access control** | `requireSession()` on every authed page **and** every server action. The Discord-ID allow-list is re-checked on each request, so removing an ID revokes access immediately. |
+| **A02 Cryptographic failures** | TLS via Caddy + Let's Encrypt with HSTS preload. `AUTH_SECRET` is 32+ random bytes. |
+| **A03 Injection** | Prisma parameterized queries. React auto-escapes output. Zod validates every server-action and API input. |
+| **A04 Insecure design** | Single-tenant by design. OAuth-only — no password reset flow to abuse. |
+| **A05 Misconfiguration** | **Per-request nonce CSP** (no `unsafe-inline` for scripts in production) via middleware, plus X-Frame-Options DENY, X-Content-Type-Options nosniff, Referrer-Policy same-origin, and a Permissions-Policy that locks down camera/mic/geo. |
+| **A06 Vulnerable components** | `npm run audit` (`npm audit --omit=dev`). Pinned Node 22 in the Docker images. Lockfile committed. |
+| **A07 Auth failures** | OAuth only — no passwords. JWT sessions; access is revoked by tightening the allow-list (re-checked per request). Sign-out is audited. Token-bucket rate limiting on every mutating action. |
+| **A08 Integrity failures** | Lockfile committed, no third-party CDN scripts, and `strict-dynamic` in the CSP blocks any injected script that lacks the per-request nonce. |
+| **A09 Logging failures** | `AuditLog` records sign-in success/denied, sign-out, every delete (events, notes, shopping, tags, kanban), and rate-limit hits. No tokens or PII bodies are logged. |
+| **A10 SSRF** | Outbound fetches are limited to Open-Meteo (weather) and Nager.Date (public holidays), both with hard-coded base URLs; lat/lng are validated as floats and the country code as exactly two uppercase letters before use. The internal digest API (`/api/internal/daily-digest`) is guarded by a shared secret and never exposed externally. |
+
+---
+
+## 🚀 Deploying
+
+> 👉 **First time?** Follow **[SETUP.md](SETUP.md)** — a from-zero walkthrough for an Ubuntu Docker VM, covering Discord OAuth, DNS, and `docker compose`, every step spelled out.
+
+### Everyday commands
 
 ```bash
 cd ~/HomePanel
 
-# Live logs
-docker compose logs -f
-
-# Restart
-docker compose restart
-
-# Stop
-docker compose down
-
-# Pull update + rebuild
-git pull && docker compose up -d --build
+docker compose logs -f                    # live logs
+docker compose restart                    # restart everything
+docker compose down                       # stop
+git pull && docker compose up -d --build  # pull an update + rebuild
 
 # Back up the database
 docker run --rm -v homepanel_data:/data -v ~/:/backup alpine \
   cp /data/homepanel.db /backup/homepanel-backup-$(date +%F).db
 ```
 
-## Local dev
+### Local development
 
 ```bash
-cp .env.example .env
-# fill in AUTH_SECRET, Discord creds, Discord IDs, your domain
+cp .env.example .env        # then fill in AUTH_SECRET, Discord creds + IDs, your domain
 npm install
 npm run db:migrate -- --name init
 npm run db:seed
-npm run dev
+npm run dev                 # http://localhost:3000
 ```
 
-App at http://localhost:3000.
+| Script | Purpose |
+|---|---|
+| `npm run dev` | Dev server with hot reload |
+| `npm run build` / `start` | Production build / serve |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run lint` | ESLint |
+| `npm run db:migrate` | Create + apply a Prisma migration |
+| `npm run db:seed` | Seed baseline data |
+| `npm run db:studio` | Prisma Studio (DB browser) |
+| `npm run audit` | Production dependency audit |
 
-## File layout
+## 🤖 Discord daily digest
 
-```
-bot/
-  index.mjs                     Daily digest bot (posts + edits Discord embeds)
-  package.json                  node-cron dependency
-Dockerfile.bot                  Bot container (Node 22 alpine)
-src/
-  app/api/internal/
-    daily-digest/route.ts       Internal API called by the bot (secret-protected)
-src/
-  auth.ts, auth.config.ts        Auth.js + Discord + allow-list
-  middleware.ts                   No-op (gating happens in pages)
-  lib/
-    db.ts                         Prisma client singleton
-    session.ts                    requireSession / getSessionUser
-    allowlist.ts                  ALLOWED_DISCORD_IDS + DISPLAY_NAMES parsing
-    audit.ts                      AuditLog writer
-    rate-limit.ts                 In-memory token bucket
-    colors.ts                     8-color palette
-    household.ts                  Members + colorKey
-    weather.ts                    Open-Meteo weather (15-min cached)
-    holidays.ts                   Canadian statutory holidays (computed)
-    season.ts                     Month → season key
-    recur.ts                      Recurring-event expansion
-    dates.ts                      Date helpers
-  app/
-    signin/page.tsx               Discord sign-in screen
-    (app)/
-      layout.tsx                  Authed shell — header + nav
-      today/                      Combined / Off / Bri tabs + tag-grouped sections
-      calendar/                   Month grid + recurrence + tags + holidays
-      shopping/                   Tap-to-cross list + assignee
-      notes/                      Card grid with inline edit + delete
-      kanban/                     Columns with click-to-rename + color + add/delete
-      settings/                   Profile + calendar event tags manager
-  components/
-    header.tsx                    Brand + date + weather + user pills
-    nav-tabs.tsx                  Top tab bar (conditional Kanban)
-    owner-pill.tsx, tag-pill.tsx  Colored pills via CSS vars
-    assignee-radio.tsx            Segmented control For [Off|Bri|Both]
-    tag-picker.tsx                "+ Tag" popover with inline tag creation
-    today-view-tabs.tsx           Combined / Off / Bri filter
-    note-card.tsx                 Inline-editable note card
-    kanban-column.tsx             Click-to-rename, color picker, add/delete column
-    kanban-card.tsx               Inline edit + ← → move + delete
-    recurrence-fields.tsx         Repeats-every + forever checkbox
-    shop-row.tsx                  Tap-to-check shopping row
-    card.tsx                      Shared surface with optional hover lift
-```
+A separate `bot` container posts **one embed per person** to their own Discord channel at the configured **digest hour** (default **6:00 AM**, change it in Settings), @mentioning them once.
 
-## Discord daily digest bot
+Through the rest of the day the bot silently **edits that same message** — no new notification — and only when something actually changes, so the `Updated HH:MM` footer reflects the *last real change*. All times use the household timezone from Settings, independent of the server clock.
 
-A separate `bot` container runs alongside the app. Each morning at **7:00 AM** it posts one embed per person to their own Discord channel. The embed is silently **edited** (no notification) every 15 minutes throughout the day as events or shopping items are added.
+Each embed shows:
 
-Each embed includes:
-- Today's calendar events (personal + Both) — all-day events listed first, then timed events. Recurring events are marked `↻`; shared (Both) events are marked `👥`.
-- Open shopping list items (personal + Both).
+- 📅 **Today's events** — personal + *Both*. All-day events first, then timed. Recurring marked `↻`, shared marked `👥`.
+- 📆 **Tomorrow's events** — a heads-up for what's coming.
+- 🛒 **Open shopping** — personal + *Both*.
 
-The bot uses the **Bot token** from your existing Discord application — the same app used for OAuth sign-in. The two credentials are independent; one does not affect the other.
+On restart during the active window, the bot clears its old messages in each channel and reposts **without** an @mention. The Discord channels are dedicated to the bot.
 
-### Required env vars (add to `.env` on the VM)
+The bot uses the **Bot token** from the same Discord application used for OAuth sign-in; the two credentials are independent.
+
+### Environment variables
 
 | Variable | Description |
 |---|---|
-| `DISCORD_BOT_TOKEN` | Bot token from the Bot tab of your Discord app |
-| `DISCORD_CHANNEL_OFF` | Channel ID where Off's daily digest is posted |
-| `DISCORD_CHANNEL_BRI` | Channel ID where Bri's daily digest is posted |
-| `INTERNAL_API_SECRET` | Random secret shared between app and bot — generate with `openssl rand -base64 32` |
+| `DISCORD_BOT_TOKEN` | Bot token from the **Bot** tab of your Discord app |
+| `INTERNAL_API_SECRET` | Shared secret between app and bot — `openssl rand -base64 32` |
+| `APP_PUBLIC_URL` | Domain shown in the embed footer (no `https://`) |
+| `DISCORD_CHANNEL_OFF` / `DISCORD_CHANNEL_BRI` | *Optional* — per-person channel IDs. Preferably set each person's channel in **Settings** instead. |
 
-### Bot setup (one-time)
+<details>
+<summary><strong>Bot setup (one-time)</strong></summary>
 
-1. **Discord Developer Portal** → your app → **Bot** → copy your existing bot token.
-2. **OAuth2 → URL Generator** → scopes: `bot` → permissions: `Send Messages`, `Embed Links`, `Read Message History` → **Guild Install** → copy the URL → paste in browser → add to your server.
-3. In Discord (Developer Mode on): right-click each channel → **Copy Channel ID**.
-4. Add the four env vars above to `.env` on the VM.
+1. **Discord Developer Portal** → your app → **Bot** → copy the bot token.
+2. **OAuth2 → URL Generator** → scopes `bot` → permissions **Send Messages**, **Embed Links**, **Read Message History** → **Guild Install** → open the URL → add to your server.
+3. With Developer Mode on, right-click each channel → **Copy Channel ID** (or set it per-person in Settings).
+4. Add the env vars above to `.env` on the VM.
 5. `git pull && docker compose up -d --build` — the `bot` service builds and starts automatically.
 
----
+</details>
 
-## Hardening checklist for the VM
+## 📱 Install as an app (PWA)
 
-- UFW: `ufw default deny incoming && ufw allow OpenSSH && ufw allow 80,443/tcp && ufw enable`
-- Disable SSH password auth, keys only
-- `unattended-upgrades` for OS patches
-- Fail2ban on sshd
-- Snapshot the VM before each upgrade
+HomePanel ships a web manifest, a service worker, and maskable icons, so it installs to a phone home screen via **Add to Home Screen** and runs full-screen (with safe-area padding for notches). On Android, **Continue with Discord** opens in your default browser via an intent URL, so saved Discord logins just work.
+
+## 📂 Project layout
+
+<details>
+<summary>Expand file tree</summary>
+
+```
+bot/
+  index.mjs                     Daily digest bot — posts, then edits embeds only on change
+  package.json                  node-cron dependency
+Dockerfile.bot                  Bot container (Node 22 alpine)
+
+src/
+  middleware.ts                 Per-request nonce CSP (auth gating happens in pages)
+  auth.ts, auth.config.ts       Auth.js + Discord + allow-list
+
+  lib/
+    db.ts                       Prisma client singleton
+    session.ts                  requireSession / getSessionUser
+    allowlist.ts                ALLOWED_DISCORD_IDS + DISPLAY_NAMES parsing
+    audit.ts                    AuditLog writer
+    rate-limit.ts               In-memory token bucket
+    colors.ts                   Color palette (CSS-variable backed)
+    household.ts                Members, colors, the "Both" pseudo-member
+    config.ts                   Household config (timezone, weather, digest hour)
+    weather.ts                  Open-Meteo current weather (3-min cached)
+    holidays.ts                 Nager.Date public holidays + Canadian fallback
+    season.ts                   Month → season key
+    recur.ts                    Recurring-event expansion (anchor-based)
+    tags.ts                     Shared tag-create helper (dedupes by name)
+    dates.ts                    Date helpers
+
+  app/
+    layout.tsx                  Root layout + PWA metadata + nonce'd SW registration
+    manifest.ts                 PWA manifest
+    signin/                     Discord sign-in screen
+    api/
+      internal/daily-digest/    Secret-protected API the bot reads
+      tags/, weather/           Inline tag creation + weather refresh
+      pwa-icon/[size]/          Generated maskable icons
+    (app)/
+      layout.tsx                Authed shell — header + nav + toasts
+      today/                    Today + Tomorrow, person filter, tag groups
+      calendar/                 Month grid + recurrence + tags + holidays
+      shopping/                 Tap-to-cross list + assignee
+      notes/                    Card grid with inline edit + delete
+      kanban/                   Columns + cards (optional, per-user)
+      settings/                 Profile, location/timezone, digest hour, tags
+
+  components/
+    icons.tsx                   Inline SVG icon set (nav, brand, chrome)
+    header.tsx                  Brand + date + weather + member pills + settings/sign-out
+    nav-tabs.tsx                Top tab bar (conditional Kanban)
+    owner-pill.tsx, tag-pill.tsx    Colored pills via CSS vars
+    assignee-radio.tsx          Segmented [member | … | Both] control
+    tag-picker.tsx              "+ Tag" popover with inline creation
+    recurrence-fields.tsx       Repeat-every + until/forever
+    today-view-tabs.tsx         Combined / per-member filter
+    note-card.tsx, notes-list.tsx       Inline-editable notes
+    shop-row.tsx, shopping-list.tsx     Tap-to-check rows + optimistic add
+    kanban-column.tsx, kanban-card.tsx  Rename, recolor, move, edit, delete
+    calendar-day-panel.tsx      Expanded day view
+    weather-widget.tsx          Header weather, self-refreshing
+    toast.tsx                   Lightweight toast provider
+    card.tsx                    Shared surface with optional hover lift
+```
+
+</details>
+
+## 🛡️ VM hardening checklist
+
+- **Firewall:** `ufw default deny incoming && ufw allow OpenSSH && ufw allow 80,443/tcp && ufw enable`
+- **SSH:** disable password auth, keys only
+- **Patches:** enable `unattended-upgrades`
+- **Brute-force:** Fail2ban on `sshd`
+- **Recovery:** snapshot the VM before each upgrade
