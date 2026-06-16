@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { HouseholdMember } from "@/lib/household";
 
-// Combined / Off / Bri view selector. Server-rendered Links; the URL drives state.
+// Combined / per-member view selector. Server-rendered Links; the URL drives state.
 export function TodayViewTabs({
   current,
   members,

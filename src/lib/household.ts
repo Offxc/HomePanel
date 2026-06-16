@@ -10,10 +10,11 @@ export type HouseholdMember = {
   kanbanEnabled: boolean;
 };
 
-// Returns the household members (Off + Bri) in a stable order: Off → Bri → other.
+// Returns the household members in a stable, name-agnostic order: oldest account first.
 export const getHousehold = cache(async (): Promise<HouseholdMember[]> => {
   const rows = await db.user.findMany({
     select: { id: true, name: true, displayName: true, discordId: true, colorKey: true, kanbanEnabled: true },
+    orderBy: { createdAt: "asc" },
   });
   const members: HouseholdMember[] = rows.map((u) => ({
     id: u.id,
@@ -21,11 +22,6 @@ export const getHousehold = cache(async (): Promise<HouseholdMember[]> => {
     colorKey: coerceColorKey(u.colorKey, "gray"),
     kanbanEnabled: u.kanbanEnabled,
   }));
-  members.sort((a, b) => {
-    const rank = (n: string) => (n === "Off" ? 0 : n === "Bri" ? 1 : 2);
-    const r = rank(a.displayName) - rank(b.displayName);
-    return r !== 0 ? r : a.displayName.localeCompare(b.displayName);
-  });
   return members;
 });
 

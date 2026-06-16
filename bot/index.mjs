@@ -10,7 +10,7 @@ import { readFileSync, writeFileSync, existsSync } from "fs";
 const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const API_SECRET = process.env.INTERNAL_API_SECRET;
 const APP_URL = process.env.APP_INTERNAL_URL ?? "http://app:3000";
-const APP_PUBLIC_URL = process.env.APP_PUBLIC_URL ?? "home.offlabs.cc";
+const APP_PUBLIC_URL = process.env.APP_PUBLIC_URL ?? "home.example.com";
 const FALLBACK_TZ = process.env.TZ || "America/Toronto";
 const STATE_FILE = "/data/bot-state.json";
 

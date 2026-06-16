@@ -29,7 +29,7 @@ Calendar, shopping list, notes, and a kanban board — with a daily Discord dige
 | 📱 | **Installable** — ships as a PWA, so it adds to a phone home screen and runs full-screen. |
 | 🎨 | **Per-person identity** — every member has a color; *Both* shows as a clean white pill throughout. |
 
-> Built for two people (Off + Bri) but the household is data-driven — names, colors, timezone, weather location, and digest hour are all editable in **Settings**.
+> Built for a two-person household, but everything is data-driven — member names, colors, timezone, weather location, and digest hour are all editable in **Settings**.
 
 ## 🧱 Stack
 
@@ -122,7 +122,7 @@ The bot uses the **Bot token** from the same Discord application used for OAuth 
 | `DISCORD_BOT_TOKEN` | Bot token from the **Bot** tab of your Discord app |
 | `INTERNAL_API_SECRET` | Shared secret between app and bot — `openssl rand -base64 32` |
 | `APP_PUBLIC_URL` | Domain shown in the embed footer (no `https://`) |
-| `DISCORD_CHANNEL_OFF` / `DISCORD_CHANNEL_BRI` | *Optional* — per-person channel IDs. Preferably set each person's channel in **Settings** instead. |
+| `DISCORD_CHANNEL_<NAME>` | *Optional* — per-member channel ID; the variable name is the member's display name uppercased. Prefer setting each member's channel in **Settings** instead. |
 
 <details>
 <summary><strong>Bot setup (one-time)</strong></summary>

@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "HomePanel",
     short_name: "HomePanel",
-    description: "Shared household panel for Off & Bri",
+    description: "A self-hosted shared household dashboard",
     start_url: "/today",
     scope: "/",
     display: "standalone",

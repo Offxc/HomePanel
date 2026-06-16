@@ -13,7 +13,7 @@ export function SignInButton() {
 
     // On Android: get the OAuth URL from Auth.js, then open it in the system
     // browser via an intent URL so saved credentials / session are available.
-    // The Discord callback to home.offlabs.cc is intercepted by Android App Links
+    // The Discord callback to the app's domain is intercepted by Android App Links
     // and handed back to this TWA to complete the sign-in.
     try {
       const csrfRes = await fetch("/api/auth/csrf");

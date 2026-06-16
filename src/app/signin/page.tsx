@@ -28,7 +28,6 @@ export default async function SignInPage({ searchParams }: { searchParams: Searc
             Only allow-listed Discord accounts can sign in.
           </p>
         )}
-        <p className="mt-6 text-[11px] text-[var(--color-app-muted)]/60">Built by Offxc</p>
       </div>
     </main>
   );
